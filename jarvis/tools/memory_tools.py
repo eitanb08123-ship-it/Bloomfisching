@@ -1,9 +1,19 @@
 from jarvis.tools.base import PermissionTier, Tool
 
 
-def build_remember_tool(memory_store):
+def build_remember_tool(memory_store, undo_stack):
     def _remember(key: str, value: str) -> str:
+        previous = memory_store.list_notes().get(key)
+
+        def _undo() -> str:
+            if previous is None:
+                memory_store.forget_note(key)
+                return f"Undid: removed note '{key}'."
+            memory_store.remember_note(key, previous)
+            return f"Undid: restored note '{key}' to its previous value."
+
         memory_store.remember_note(key, value)
+        undo_stack.push("remember_note", f"undo remembering '{key}'", _undo)
         return f"Remembered: {key} = {value}"
 
     return Tool(
@@ -38,10 +48,19 @@ def build_recall_tool(memory_store):
     )
 
 
-def build_forget_tool(memory_store):
+def build_forget_tool(memory_store, undo_stack):
     def _forget(key: str) -> str:
+        previous = memory_store.list_notes().get(key)
         existed = memory_store.forget_note(key)
-        return f"Forgot '{key}'." if existed else f"No note called '{key}' was found."
+
+        if existed:
+            def _undo() -> str:
+                memory_store.remember_note(key, previous)
+                return f"Undid: restored note '{key}'."
+
+            undo_stack.push("forget_note", f"undo forgetting '{key}'", _undo)
+            return f"Forgot '{key}'."
+        return f"No note called '{key}' was found."
 
     return Tool(
         name="forget_note",

@@ -43,7 +43,17 @@ def _close_application(process_name: str) -> str:
     return "Closed: " + ", ".join(matched)
 
 
-def build_open_tool() -> Tool:
+def build_open_tool(undo_stack) -> Tool:
+    def _handler(target: str) -> str:
+        result = _open_application(target)
+        if result.startswith("Launched:"):
+            # Best-effort undo: closes whatever now matches that name. If the
+            # user already had another instance of it open, this may close
+            # that one instead - there's no handle to the exact process we
+            # just launched (os.startfile doesn't hand one back).
+            undo_stack.push("open_application", f"close '{target}' again", lambda: _close_application(target))
+        return result
+
     return Tool(
         name="open_application",
         description="Open an application, file, or folder by name or path (e.g. 'notepad', 'chrome', a document path).",
@@ -53,11 +63,21 @@ def build_open_tool() -> Tool:
             "properties": {"target": {"type": "string", "description": "App name, or file/folder path."}},
             "required": ["target"],
         },
-        handler=lambda target: _open_application(target),
+        handler=_handler,
     )
 
 
-def build_close_tool() -> Tool:
+def build_close_tool(undo_stack) -> Tool:
+    def _reopen(process_name: str) -> str:
+        reopened = _open_application(process_name)
+        return f"{reopened} (any unsaved work from before the close could not be recovered)"
+
+    def _handler(process_name: str) -> str:
+        result = _close_application(process_name)
+        if result.startswith("Closed:"):
+            undo_stack.push("close_application", f"reopen '{process_name}'", lambda: _reopen(process_name))
+        return result
+
     return Tool(
         name="close_application",
         description="Force-close a running application by process name. May lose unsaved work in that app.",
@@ -67,5 +87,5 @@ def build_close_tool() -> Tool:
             "properties": {"process_name": {"type": "string", "description": "e.g. 'notepad.exe', 'chrome'."}},
             "required": ["process_name"],
         },
-        handler=lambda process_name: _close_application(process_name),
+        handler=_handler,
     )

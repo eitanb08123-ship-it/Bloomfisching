@@ -15,8 +15,7 @@
     "tts_rate": 175
   },
   "permissions": {
-    "action_requires_confirmation": true,
-    "critical_requires_double_confirmation": true
+    "mode": "confirm"
   },
   "tools": {
     "file_search_root": "~",

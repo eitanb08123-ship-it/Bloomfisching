@@ -22,11 +22,16 @@ class PermissionManager:
     permissions, etc. still apply underneath whatever a tool does).
     """
 
-    def __init__(self, request_confirmation):
+    def __init__(self, request_confirmation, autonomous: bool = False):
         # request_confirmation(request_id, tool, args, tier, stage) -> awaited,
         # resolved externally (by the server) when the user answers.
         self._request_confirmation = request_confirmation
         self._pending: dict[str, asyncio.Future] = {}
+        # Autonomous mode: run everything immediately, no confirmations at all,
+        # relying on each tool's undo support (see undo_last_action) as the
+        # safety net instead. Some actions (e.g. closing an app, opening a
+        # website) can't be fully undone - see their own tool descriptions.
+        self.autonomous = autonomous
 
     def resolve(self, request_id: str, approved: bool) -> None:
         future = self._pending.pop(request_id, None)
@@ -34,7 +39,7 @@ class PermissionManager:
             future.set_result(approved)
 
     async def authorize(self, tool, args: dict) -> bool:
-        if tool.tier == PermissionTier.READ:
+        if self.autonomous or tool.tier == PermissionTier.READ:
             return True
 
         if not await self._ask(tool, args, stage=1):

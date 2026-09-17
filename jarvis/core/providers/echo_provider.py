@@ -6,7 +6,7 @@ HELP_TEXT = (
     "I'm running in offline/basic mode (no AI provider configured in config/settings.json).\n"
     "I can still run simple commands, e.g.:\n"
     "  system info | search <text> | read file <path> | open <app or url> | "
-    "close <process> | remember <key> = <value> | recall | forget <key>\n"
+    "close <process> | remember <key> = <value> | recall | forget <key> | undo\n"
     "Add an Anthropic API key to config/settings.json and set \"ai_provider\": \"anthropic\" "
     "for full natural-language understanding."
 )
@@ -21,6 +21,7 @@ _PATTERNS = [
     (re.compile(r"^(remember|זכור)\s+(.+?)\s*=\s*(.+)", re.I), "remember_note", lambda m, rest: {"key": m.group(2), "value": m.group(3)}),
     (re.compile(r"^(recall|מה זכור)", re.I), "recall_notes", lambda m, rest: {}),
     (re.compile(r"^(forget|תשכח)\s+(.+)", re.I), "forget_note", lambda m, rest: {"key": m.group(2)}),
+    (re.compile(r"^(undo|חזור|בטל)", re.I), "undo_last_action", lambda m, rest: {}),
 ]
 
 

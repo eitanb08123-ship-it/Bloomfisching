@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from jarvis.core.ai_core import AICore
+from jarvis.core.undo_stack import UndoStack
 from jarvis.memory.memory_store import MemoryStore
 from jarvis.permissions.manager import PermissionManager
 from jarvis.tools.registry import ToolRegistry
@@ -22,7 +23,8 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 settings = load_settings()
 memory_store = MemoryStore(max_history_messages=settings["memory"]["max_history_messages"])
-tool_registry = ToolRegistry(settings, memory_store)
+undo_stack = UndoStack()
+tool_registry = ToolRegistry(settings, memory_store, undo_stack)
 
 _active_socket: WebSocket | None = None
 
@@ -43,7 +45,10 @@ async def _request_confirmation(request_id: str, tool, args: dict, stage: int) -
     )
 
 
-permission_manager = PermissionManager(_request_confirmation)
+_autonomous = settings["permissions"].get("mode", "confirm") == "autonomous"
+if _autonomous:
+    log.warning("Permissions mode is 'autonomous': tools run with no confirmation, undo is the only safety net.")
+permission_manager = PermissionManager(_request_confirmation, autonomous=_autonomous)
 ai_core = AICore(settings, memory_store, tool_registry, permission_manager)
 
 app = FastAPI()
