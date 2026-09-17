@@ -41,6 +41,11 @@
     setTimeout(() => el.remove(), BUBBLE_LIFETIME_MS);
   }
 
+  function setSeriousMode(active) {
+    document.body.classList.toggle('serious-mode', active);
+    window.JarvisSphere.setTheme(active ? 'serious' : 'normal');
+  }
+
   function setConnected(connected) {
     connDot.classList.toggle('connected', connected);
     connText.textContent = connected ? 'Online' : 'Disconnected';
@@ -88,6 +93,9 @@
         break;
       case 'activity':
         addActivity(data.tool, data.args, data.result);
+        break;
+      case 'serious_mode':
+        setSeriousMode(data.active);
         break;
       case 'error':
         addMessage('system', `⚠ ${data.message}`);

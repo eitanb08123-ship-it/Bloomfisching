@@ -76,6 +76,7 @@ async def websocket_endpoint(websocket: WebSocket):
     provider_labels = {"AnthropicProvider": "ANTHROPIC", "GroqProvider": "GROQ"}
     mode = provider_labels.get(ai_core.provider.__class__.__name__, "ECHO")
     await websocket.send_json({"type": "mode", "mode": mode})
+    await websocket.send_json({"type": "serious_mode", "active": permission_manager.autonomous})
 
     for message in memory_store.get_history():
         role_type = "assistant_message" if message["role"] == "assistant" else "user_message"
@@ -122,6 +123,7 @@ async def _process_user_text(websocket: WebSocket, text: str) -> None:
         log.exception("Error handling message")
         reply = f"Internal error: {exc}"
     await websocket.send_json({"type": "thinking", "value": False})
+    await websocket.send_json({"type": "serious_mode", "active": permission_manager.autonomous})
     await websocket.send_json({"type": "assistant_message", "text": reply})
 
     if settings["voice"]["enabled"] and speech_output.is_available():
