@@ -1,5 +1,6 @@
 import asyncio
 
+from jarvis.core import commands
 from jarvis.core.providers.echo_provider import EchoProvider
 from jarvis.permissions.manager import PermissionManager
 from jarvis.tools.registry import ToolRegistry
@@ -29,14 +30,32 @@ def build_provider(settings: dict):
 
 
 class AICore:
-    def __init__(self, settings: dict, memory_store, tool_registry: ToolRegistry, permission_manager: PermissionManager):
+    def __init__(
+        self,
+        settings: dict,
+        memory_store,
+        tool_registry: ToolRegistry,
+        permission_manager: PermissionManager,
+        on_activity=None,
+    ):
         self.settings = settings
         self.memory = memory_store
         self.tools = tool_registry
         self.permissions = permission_manager
         self.provider = build_provider(settings)
+        # on_activity(tool_name, args, result) -> awaited; lets the server push
+        # a live "what JARVIS just did" feed to the UI, separate from the
+        # chat reply text.
+        self.on_activity = on_activity
 
     async def handle_message(self, user_text: str) -> str:
+        command = commands.match_command(user_text)
+        if command:
+            reply = self._handle_command(command)
+            self.memory.append_history("user", user_text)
+            self.memory.append_history("assistant", reply)
+            return reply
+
         self.memory.append_history("user", user_text)
         history = self.memory.get_history()
         tool_schemas = (
@@ -69,10 +88,37 @@ class AICore:
 
         approved = await self.permissions.authorize(tool, tool_args)
         if not approved:
-            return f"User did not approve running '{tool_name}'."
+            result = f"User did not approve running '{tool_name}'."
+            await self._report_activity(tool_name, tool_args, result)
+            return result
 
         try:
-            return await asyncio.to_thread(tool.run, **tool_args)
+            result = await asyncio.to_thread(tool.run, **tool_args)
         except Exception as exc:  # tool failures shouldn't crash the assistant
             log.exception("Tool '%s' failed", tool_name)
-            return f"Tool '{tool_name}' failed: {exc}"
+            result = f"Tool '{tool_name}' failed: {exc}"
+
+        await self._report_activity(tool_name, tool_args, result)
+        return result
+
+    async def _report_activity(self, tool_name: str, tool_args: dict, result: str) -> None:
+        if self.on_activity:
+            await self.on_activity(tool_name, tool_args, result)
+
+    def _handle_command(self, command: str) -> str:
+        if command == "serious_off":
+            self.permissions.autonomous = False
+            return "Serious mode off — I'll ask for confirmation again before running actions."
+        if command == "serious_on":
+            self.permissions.autonomous = True
+            return (
+                "Serious mode on — I'll act immediately without asking, for anything you ask me to do. "
+                "Say 'חזור' or 'undo' any time to reverse my last action."
+            )
+        if command == "voice_off":
+            self.settings["voice"]["enabled"] = False
+            return "Voice replies turned off."
+        if command == "voice_on":
+            self.settings["voice"]["enabled"] = True
+            return "Voice replies turned on — I'll speak my replies out loud from now on."
+        return "(unrecognized command)"

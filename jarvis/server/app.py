@@ -45,11 +45,17 @@ async def _request_confirmation(request_id: str, tool, args: dict, stage: int) -
     )
 
 
+async def _report_activity(tool_name: str, args: dict, result: str) -> None:
+    if _active_socket is None:
+        return
+    await _active_socket.send_json({"type": "activity", "tool": tool_name, "args": args, "result": result})
+
+
 _autonomous = settings["permissions"].get("mode", "confirm") == "autonomous"
 if _autonomous:
     log.warning("Permissions mode is 'autonomous': tools run with no confirmation, undo is the only safety net.")
 permission_manager = PermissionManager(_request_confirmation, autonomous=_autonomous)
-ai_core = AICore(settings, memory_store, tool_registry, permission_manager)
+ai_core = AICore(settings, memory_store, tool_registry, permission_manager, on_activity=_report_activity)
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

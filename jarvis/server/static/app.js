@@ -21,9 +21,11 @@
   const confirmArgs = document.getElementById('confirm-args');
   const confirmApprove = document.getElementById('confirm-approve');
   const confirmDeny = document.getElementById('confirm-deny');
+  const activityList = document.getElementById('activity-list');
 
   let ws;
   let currentConfirmRequestId = null;
+  const MAX_ACTIVITY_ENTRIES = 20;
 
   const BUBBLE_LIFETIME_MS = 6000;
   const BUBBLE_FADE_MS = 500;
@@ -84,11 +86,36 @@
       case 'confirmation_request':
         showConfirmation(data);
         break;
+      case 'activity':
+        addActivity(data.tool, data.args, data.result);
+        break;
       case 'error':
         addMessage('system', `⚠ ${data.message}`);
         break;
       default:
         console.warn('Unknown message', data);
+    }
+  }
+
+  function addActivity(tool, args, result) {
+    const empty = activityList.querySelector('.activity-empty');
+    if (empty) empty.remove();
+
+    const el = document.createElement('li');
+    const toolSpan = document.createElement('span');
+    toolSpan.className = 'activity-tool';
+    toolSpan.textContent = tool;
+
+    const time = new Date().toLocaleTimeString();
+    // Built with textContent/appendChild (not innerHTML): args/result can
+    // contain arbitrary text from files, notes, or model output, and must
+    // never be interpreted as markup in this page.
+    el.appendChild(toolSpan);
+    el.appendChild(document.createTextNode(`(${JSON.stringify(args)}) → ${result} (${time})`));
+    activityList.prepend(el);
+
+    while (activityList.children.length > MAX_ACTIVITY_ENTRIES) {
+      activityList.removeChild(activityList.lastChild);
     }
   }
 

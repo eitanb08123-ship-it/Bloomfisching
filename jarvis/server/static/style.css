@@ -151,6 +151,29 @@ body {
 .tier-action { background: var(--tier-action); color: var(--tier-action); }
 .tier-critical { background: var(--tier-critical); color: var(--tier-critical); }
 
+.activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.activity-list li {
+  padding: 6px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dim);
+  line-height: 1.4;
+  word-break: break-word;
+}
+.activity-list li .activity-tool { color: var(--cyan); font-weight: bold; }
+.activity-list li.activity-empty { border: none; background: none; font-style: italic; padding: 0; }
+
 .chat-panel {
   grid-area: chat;
   border-top: 1px solid var(--panel-border);
