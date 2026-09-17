@@ -103,7 +103,11 @@ async def _process_user_text(websocket: WebSocket, text: str) -> None:
     await websocket.send_json({"type": "assistant_message", "text": reply})
 
     if settings["voice"]["enabled"] and speech_output.is_available():
-        await asyncio.to_thread(speech_output.speak, reply, settings["voice"]["tts_rate"])
+        try:
+            await asyncio.to_thread(speech_output.speak, reply, settings["voice"]["tts_rate"])
+        except Exception as exc:  # otherwise this fails silently in a fire-and-forget task
+            log.exception("Voice output failed")
+            await websocket.send_json({"type": "error", "message": f"Voice output failed: {exc}"})
 
 
 async def _handle_voice_listen(websocket: WebSocket) -> None:

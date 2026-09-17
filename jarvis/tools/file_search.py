@@ -1,13 +1,35 @@
 import os
+import platform
+import urllib.parse
 from pathlib import Path
 
 from jarvis.tools.base import PermissionTier, Tool
+from jarvis.utils.logger import get_logger
+
+log = get_logger("tools.file_search")
+
+
+def _open_visible_search_window(query: str, search_root: Path) -> None:
+    """Best-effort only: opens a real File Explorer search window via
+    Windows' built-in search-ms: URI, so the user can see it searching too.
+    Uses Explorer's own search (which may find slightly different/more
+    results than the os.walk scan below) - the text results JARVIS reads
+    and reports always come from the programmatic scan, not this window."""
+    if platform.system() != "Windows":
+        return
+    try:
+        uri = f"search-ms:query={urllib.parse.quote(query)}&crumb=location:{search_root}"
+        os.startfile(uri)  # noqa: S606 - intentional, visible search window
+    except OSError as exc:
+        log.warning("Could not open visible search window: %s", exc)
 
 
 def _search_files(query: str, root: str, max_results: int) -> str:
     search_root = Path(root).expanduser()
     if not search_root.exists():
         return f"Search root does not exist: {search_root}"
+
+    _open_visible_search_window(query, search_root)
 
     query_lower = query.lower()
     matches = []

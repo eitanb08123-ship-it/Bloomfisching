@@ -1,13 +1,47 @@
 import os
 import platform
 import subprocess
+import time
 
 import psutil
 
 from jarvis.tools.base import PermissionTier, Tool
+from jarvis.utils.logger import get_logger
+
+log = get_logger("tools.app_control")
+
+try:
+    import pyautogui
+
+    _PYAUTOGUI_AVAILABLE = True
+except ImportError:
+    _PYAUTOGUI_AVAILABLE = False
 
 
-def _open_application(target: str) -> str:
+def _looks_like_path(target: str) -> bool:
+    return os.path.exists(target) or os.sep in target or "/" in target
+
+
+def _open_visibly_via_start_menu(app_name: str) -> str:
+    """Presses the Windows key and types the app name into Start Menu search,
+    so the launch is visible on screen instead of happening silently. Only
+    used for bare app names (not file/folder paths, which Start-menu search
+    doesn't resolve reliably). Real keyboard input goes system-wide for
+    ~1 second - opening the Start menu grabs focus itself, but avoid
+    triggering this while typing something else at the exact same moment."""
+    try:
+        pyautogui.press("win")
+        time.sleep(0.6)
+        pyautogui.typewrite(app_name, interval=0.03)
+        time.sleep(0.4)
+        pyautogui.press("enter")
+        return f"Launched: {app_name} (opened visibly via the Start menu)"
+    except Exception as exc:
+        log.warning("Visible launch failed for '%s', falling back to instant launch: %s", app_name, exc)
+        return _open_application_instant(app_name)
+
+
+def _open_application_instant(target: str) -> str:
     """Launch an application or file by name/path using the OS's normal
     association mechanism. No elevated privileges are requested; if Windows
     would show a UAC prompt for this target, it still will."""
@@ -23,6 +57,12 @@ def _open_application(target: str) -> str:
         return f"Could not find application or file: {target}"
     except OSError as exc:
         return f"Failed to launch '{target}': {exc}"
+
+
+def _open_application(target: str) -> str:
+    if _PYAUTOGUI_AVAILABLE and platform.system() == "Windows" and not _looks_like_path(target):
+        return _open_visibly_via_start_menu(target)
+    return _open_application_instant(target)
 
 
 def _close_application(process_name: str) -> str:
