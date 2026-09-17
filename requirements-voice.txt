@@ -1,0 +1,6 @@
+# Optional voice features. Install separately: pip install -r requirements-voice.txt
+# PyAudio needs a compiler on Windows (Microsoft C++ Build Tools) to build from
+# source. If it fails, try: pip install pipwin && pipwin install pyaudio
+SpeechRecognition
+PyAudio
+pyttsx3

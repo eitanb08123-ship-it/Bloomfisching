@@ -13,6 +13,9 @@ pip install -r requirements.txt
 python run.py
 ```
 
+(קול הוא הרחבה נפרדת ואופציונלית — ראה "קול (אופציונלי)" למטה — כדי שהתקנה
+בסיסית תמיד תצליח גם למי שאין לו כלי קומפילציה מותקנים.)
+
 בהרצה ראשונה נוצר הקובץ `jarvis/config/settings.json` (עותק של
 `settings.example.json`). זה הקובץ שעורכים כדי להגדיר מפתח API, שפת קול וכו' —
 הוא לא נכנס ל-git.
@@ -70,10 +73,21 @@ forget <key>
 
 ### קול (אופציונלי)
 
-ב-`settings.json` תחת `"voice": {"enabled": true, ...}`, ולחיצה על כפתור 🎙
-בממשק תפעיל האזנה חד-פעמית מהמיקרופון (Google Speech Recognition) ותקריא את
-התשובה בקול (SAPI5 של Windows דרך `pyttsx3`). PyAudio ב-Windows לפעמים דורש
-`pip install pipwin && pipwin install pyaudio` אם ההתקנה הרגילה נכשלת.
+זה תלוי בחבילות נוספות שלא נכללות בהתקנה הרגילה (כי `PyAudio` דורש קומפיילר
+ב-Windows ועלול להיכשל אצל חלק מהמשתמשים). כדי להפעיל קול:
+
+```powershell
+pip install -r requirements-voice.txt
+```
+
+אם ההתקנה נכשלת על `PyAudio` עם שגיאה על "Microsoft Visual C++ 14.0 required",
+יש שתי אפשרויות: להתקין את [Build Tools for Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+(רק את "Desktop development with C++"), או לנסות
+`pip install pipwin && pipwin install pyaudio` כתחליף.
+
+אחרי שההתקנה הצליחה, ב-`settings.json` תחת `"voice": {"enabled": true, ...}`,
+ולחיצה על כפתור 🎙 בממשק תפעיל האזנה חד-פעמית מהמיקרופון (Google Speech
+Recognition) ותקריא את התשובה בקול (SAPI5 של Windows דרך `pyttsx3`).
 
 ## מה נבנה
 
