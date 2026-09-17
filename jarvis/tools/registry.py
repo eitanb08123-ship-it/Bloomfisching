@@ -1,4 +1,13 @@
-from jarvis.tools import app_control, file_reader, file_search, memory_tools, system_info, undo_tool, web_control
+from jarvis.tools import (
+    app_control,
+    file_reader,
+    file_search,
+    memory_tools,
+    system_info,
+    undo_tool,
+    web_control,
+    web_search,
+)
 from jarvis.tools.base import Tool
 
 
@@ -14,6 +23,7 @@ class ToolRegistry:
             app_control.build_open_tool(undo_stack),
             app_control.build_close_tool(undo_stack),
             web_control.build_tool(),
+            web_search.build_tool(),
             memory_tools.build_remember_tool(memory_store, undo_stack),
             memory_tools.build_recall_tool(memory_store),
             memory_tools.build_forget_tool(memory_store, undo_stack),
