@@ -106,16 +106,6 @@ class AICore:
             await self.on_activity(tool_name, tool_args, result)
 
     def _handle_command(self, command: str) -> str:
-        if command == "serious_off":
-            self.permissions.autonomous = False
-            return "מצב רציני כבוי — אני אחזור לבקש אישור לפני שאני מבצע פעולות."
-        if command == "serious_on":
-            self.permissions.autonomous = True
-            return (
-                "מצב רציני פעיל — אני אבצע כל בקשה שלך מיד בלי לשאול. "
-                "תגיד 'חזור' או 'undo' בכל שלב כדי לבטל את הפעולה האחרונה שלי. "
-                "מה תרצה שאבדוק או אעשה?"
-            )
         if command == "voice_off":
             self.settings["voice"]["enabled"] = False
             return "הקראה בקול כבויה."

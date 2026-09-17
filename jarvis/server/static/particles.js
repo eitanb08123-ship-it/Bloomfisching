@@ -9,7 +9,6 @@
   let angleY = 0;
   let angleX = 0;
   let activity = 0.15; // 0 = idle, 1 = thinking/speaking hard
-  let hueBase = 190; // cyan; switches to red (~355) in serious mode
 
   // Even distribution on a sphere via the golden-spiral method.
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
@@ -54,7 +53,7 @@
       const brightness = (p.depth + 1) / 2; // 0..1
       const size = 0.6 + brightness * 1.8 + activity * 1.2;
       const alpha = 0.25 + brightness * 0.65;
-      const hue = hueBase + activity * 15;
+      const hue = 190 + activity * 15;
       ctx.beginPath();
       ctx.fillStyle = `hsla(${hue}, 95%, ${55 + brightness * 20}%, ${alpha})`;
       ctx.shadowColor = `hsla(${hue}, 100%, 70%, ${alpha})`;
@@ -75,9 +74,6 @@
   window.JarvisSphere = {
     setActivity(level) {
       activity = Math.max(0, Math.min(1, level));
-    },
-    setTheme(name) {
-      hueBase = name === 'serious' ? 355 : 190;
     },
   };
 })();

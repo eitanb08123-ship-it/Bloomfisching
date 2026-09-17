@@ -14,9 +14,6 @@
     "input_language": "he-IL",
     "tts_rate": 175
   },
-  "permissions": {
-    "mode": "confirm"
-  },
   "tools": {
     "file_search_root": "~",
     "max_search_results": 200,

@@ -14,17 +14,9 @@
   const memVal = document.getElementById('mem-val');
   const diskVal = document.getElementById('disk-val');
 
-  const confirmBackdrop = document.getElementById('confirm-backdrop');
-  const confirmTier = document.getElementById('confirm-tier');
-  const confirmTitle = document.getElementById('confirm-title');
-  const confirmDesc = document.getElementById('confirm-desc');
-  const confirmArgs = document.getElementById('confirm-args');
-  const confirmApprove = document.getElementById('confirm-approve');
-  const confirmDeny = document.getElementById('confirm-deny');
   const activityList = document.getElementById('activity-list');
 
   let ws;
-  let currentConfirmRequestId = null;
   const MAX_ACTIVITY_ENTRIES = 20;
 
   const BUBBLE_LIFETIME_MS = 6000;
@@ -39,11 +31,6 @@
 
     setTimeout(() => el.classList.add('fade-out'), BUBBLE_LIFETIME_MS - BUBBLE_FADE_MS);
     setTimeout(() => el.remove(), BUBBLE_LIFETIME_MS);
-  }
-
-  function setSeriousMode(active) {
-    document.body.classList.toggle('serious-mode', active);
-    window.JarvisSphere.setTheme(active ? 'serious' : 'normal');
   }
 
   function setConnected(connected) {
@@ -88,14 +75,8 @@
         setBar(memBar, memVal, data.mem);
         setBar(diskBar, diskVal, data.disk);
         break;
-      case 'confirmation_request':
-        showConfirmation(data);
-        break;
       case 'activity':
         addActivity(data.tool, data.args, data.result);
-        break;
-      case 'serious_mode':
-        setSeriousMode(data.active);
         break;
       case 'error':
         addMessage('system', `⚠ ${data.message}`);
@@ -131,26 +112,6 @@
     barEl.style.width = `${percent}%`;
     valEl.textContent = `${Math.round(percent)}%`;
   }
-
-  function showConfirmation(data) {
-    currentConfirmRequestId = data.request_id;
-    confirmTier.textContent = data.tier.toUpperCase() + (data.stage === 2 ? ' · FINAL CONFIRMATION' : '');
-    confirmTier.className = `modal-tier ${data.tier}`;
-    confirmTitle.textContent = `Run: ${data.tool}`;
-    confirmDesc.textContent = data.description;
-    confirmArgs.textContent = JSON.stringify(data.args, null, 2);
-    confirmBackdrop.classList.add('open');
-  }
-
-  function respondConfirmation(approved) {
-    if (!currentConfirmRequestId) return;
-    ws.send(JSON.stringify({ type: 'confirm_response', request_id: currentConfirmRequestId, approved }));
-    currentConfirmRequestId = null;
-    confirmBackdrop.classList.remove('open');
-  }
-
-  confirmApprove.addEventListener('click', () => respondConfirmation(true));
-  confirmDeny.addEventListener('click', () => respondConfirmation(false));
 
   chatForm.addEventListener('submit', (e) => {
     e.preventDefault();

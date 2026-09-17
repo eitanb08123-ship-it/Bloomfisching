@@ -29,32 +29,13 @@ tool_registry = ToolRegistry(settings, memory_store, undo_stack)
 _active_socket: WebSocket | None = None
 
 
-async def _request_confirmation(request_id: str, tool, args: dict, stage: int) -> None:
-    if _active_socket is None:
-        return
-    await _active_socket.send_json(
-        {
-            "type": "confirmation_request",
-            "request_id": request_id,
-            "tool": tool.name,
-            "description": tool.description,
-            "tier": tool.tier.value,
-            "stage": stage,
-            "args": args,
-        }
-    )
-
-
 async def _report_activity(tool_name: str, args: dict, result: str) -> None:
     if _active_socket is None:
         return
     await _active_socket.send_json({"type": "activity", "tool": tool_name, "args": args, "result": result})
 
 
-_autonomous = settings["permissions"].get("mode", "confirm") == "autonomous"
-if _autonomous:
-    log.warning("Permissions mode is 'autonomous': tools run with no confirmation, undo is the only safety net.")
-permission_manager = PermissionManager(_request_confirmation, autonomous=_autonomous)
+permission_manager = PermissionManager()
 ai_core = AICore(settings, memory_store, tool_registry, permission_manager, on_activity=_report_activity)
 
 app = FastAPI()
@@ -76,7 +57,6 @@ async def websocket_endpoint(websocket: WebSocket):
     provider_labels = {"AnthropicProvider": "ANTHROPIC", "GroqProvider": "GROQ"}
     mode = provider_labels.get(ai_core.provider.__class__.__name__, "ECHO")
     await websocket.send_json({"type": "mode", "mode": mode})
-    await websocket.send_json({"type": "serious_mode", "active": permission_manager.autonomous})
 
     for message in memory_store.get_history():
         role_type = "assistant_message" if message["role"] == "assistant" else "user_message"
@@ -99,13 +79,10 @@ async def websocket_endpoint(websocket: WebSocket):
 async def _handle_client_message(websocket: WebSocket, data: dict) -> None:
     msg_type = data.get("type")
 
-    # user_message/voice_listen must run as background tasks, not be awaited here:
-    # handling one can block on a confirmation, and awaiting it would stop this
-    # loop from ever reading the confirm_response that would unblock it.
+    # user_message/voice_listen run as background tasks so a slow tool call
+    # (e.g. a web search) doesn't block this loop from reading further messages.
     if msg_type == "user_message":
         asyncio.create_task(_process_user_text(websocket, data["text"]))
-    elif msg_type == "confirm_response":
-        permission_manager.resolve(data["request_id"], bool(data["approved"]))
     elif msg_type == "clear_history":
         memory_store.clear_history()
         await websocket.send_json({"type": "assistant_message", "text": "History cleared."})
@@ -123,7 +100,6 @@ async def _process_user_text(websocket: WebSocket, text: str) -> None:
         log.exception("Error handling message")
         reply = f"Internal error: {exc}"
     await websocket.send_json({"type": "thinking", "value": False})
-    await websocket.send_json({"type": "serious_mode", "active": permission_manager.autonomous})
     await websocket.send_json({"type": "assistant_message", "text": reply})
 
     if settings["voice"]["enabled"] and speech_output.is_available():

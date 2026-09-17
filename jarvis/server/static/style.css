@@ -11,12 +11,6 @@
   --tier-critical: #ff4d5e;
 }
 
-body.serious-mode {
-  --panel-border: rgba(255, 59, 59, 0.3);
-  --cyan: #ff3b3b;
-  --cyan-dim: #a30f0f;
-}
-
 * { box-sizing: border-box; }
 
 html, body {
@@ -240,46 +234,3 @@ body {
   0%, 100% { box-shadow: 0 0 0 rgba(255,77,94,0.6); }
   50% { box-shadow: 0 0 14px rgba(255,77,94,0.9); }
 }
-
-.modal-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.65);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-.modal-backdrop.open { display: flex; }
-.modal {
-  width: 420px;
-  background: #0a1420;
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  padding: 24px;
-  box-shadow: 0 0 40px rgba(51,232,255,0.2);
-}
-.modal h2 { margin: 8px 0; font-family: 'Orbitron', sans-serif; font-size: 16px; }
-.modal p { color: var(--text-dim); font-size: 13px; }
-.modal pre {
-  background: rgba(255,255,255,0.05);
-  padding: 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  max-height: 120px;
-  overflow: auto;
-}
-.modal-tier {
-  display: inline-block;
-  font-size: 11px;
-  letter-spacing: 2px;
-  padding: 3px 10px;
-  border-radius: 4px;
-}
-.modal-tier.action { background: rgba(255,176,32,0.15); color: var(--tier-action); border: 1px solid var(--tier-action); }
-.modal-tier.critical { background: rgba(255,77,94,0.15); color: var(--tier-critical); border: 1px solid var(--tier-critical); }
-.modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
-.btn-deny, .btn-approve {
-  padding: 8px 18px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px;
-}
-.btn-deny { background: transparent; border: 1px solid var(--text-dim); color: var(--text-dim); }
-.btn-approve { background: rgba(51,232,255,0.15); border: 1px solid var(--cyan); color: var(--cyan); }
