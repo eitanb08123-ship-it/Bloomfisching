@@ -23,6 +23,9 @@ class AIResponse:
 
 
 class AIProvider(ABC):
+    # "anthropic" or "openai" - tells AICore which tool-schema shape to build.
+    schema_format = "openai"
+
     @abstractmethod
     def send(self, history: list[dict], tool_schemas: list[dict]) -> AIResponse:
         """Send the conversation so far (+ available tools) and get a response."""

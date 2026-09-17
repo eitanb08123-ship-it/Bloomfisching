@@ -28,3 +28,6 @@ class ToolRegistry:
 
     def anthropic_schemas(self) -> list[dict]:
         return [t.to_anthropic_schema() for t in self._tools.values()]
+
+    def openai_schemas(self) -> list[dict]:
+        return [t.to_openai_schema() for t in self._tools.values()]

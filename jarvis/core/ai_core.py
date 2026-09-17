@@ -12,12 +12,19 @@ MAX_TOOL_ROUNDS = 5
 
 def build_provider(settings: dict):
     provider_name = settings.get("ai_provider", "echo")
+
     if provider_name == "anthropic" and settings.get("anthropic_api_key"):
         from jarvis.core.providers.anthropic_provider import AnthropicProvider
 
         return AnthropicProvider(settings["anthropic_api_key"], settings["anthropic_model"])
-    if provider_name == "anthropic":
-        log.warning("ai_provider is 'anthropic' but no anthropic_api_key is set; falling back to echo mode.")
+
+    if provider_name == "groq" and settings.get("groq_api_key"):
+        from jarvis.core.providers.groq_provider import GroqProvider
+
+        return GroqProvider(settings["groq_api_key"], settings["groq_model"])
+
+    if provider_name in ("anthropic", "groq"):
+        log.warning("ai_provider is '%s' but no matching API key is set; falling back to echo mode.", provider_name)
     return EchoProvider()
 
 
@@ -32,7 +39,9 @@ class AICore:
     async def handle_message(self, user_text: str) -> str:
         self.memory.append_history("user", user_text)
         history = self.memory.get_history()
-        tool_schemas = self.tools.anthropic_schemas()
+        tool_schemas = (
+            self.tools.anthropic_schemas() if self.provider.schema_format == "anthropic" else self.tools.openai_schemas()
+        )
 
         response = await asyncio.to_thread(self.provider.send, history, tool_schemas)
 

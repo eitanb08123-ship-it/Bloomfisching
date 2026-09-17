@@ -51,6 +51,23 @@ forget <key>
 
 ואז JARVIS ינהל שיחה טבעית מלאה ויחליט בעצמו מתי להשתמש בכלים.
 
+### הפעלה עם Groq (שיחה חופשית + הבנת כוונות, חינמי/מהיר)
+
+מפתח מקבלים ב-[console.groq.com](https://console.groq.com/keys). ב-
+`jarvis/config/settings.json`:
+
+```json
+{
+  "ai_provider": "groq",
+  "groq_api_key": "gsk_...",
+  "groq_model": "llama-3.3-70b-versatile"
+}
+```
+
+זה עובד בדיוק כמו מצב Anthropic (tool use אמיתי דרך ה-API), רק עם מודל אחר
+ברקע. אפשר להחליף את `groq_model` לכל מודל אחר שזמין בחשבון ה-Groq שלך
+(שים לב שלא כל מודל תומך ב-function calling).
+
 ### קול (אופציונלי)
 
 ב-`settings.json` תחת `"voice": {"enabled": true, ...}`, ולחיצה על כפתור 🎙
@@ -64,7 +81,7 @@ forget <key>
 run.py                        נקודת הכניסה — מרים שרת + פותח חלון
 jarvis/
   core/ai_core.py             התזמור: היסטוריה → מודל → כלים → תשובה
-  core/providers/             Echo (בלי API) ו-Anthropic (עם tool use אמיתי)
+  core/providers/             Echo (בלי API), Anthropic ו-Groq (שניהם עם tool use אמיתי)
   tools/                      כל כלי הוא מודול נפרד + רמת הרשאה
   permissions/manager.py      שער האישורים בין AI לכלים
   memory/memory_store.py      זיכרון מקומי (data/memory.json, קריא לעריכה ידנית)
@@ -91,7 +108,7 @@ JARVIS לא עוקף UAC, הרשאות קבצים או כל בקרת אבטחה 
 ## מגבלות ידועות של ה-MVP הזה
 
 - הבנת השפה הטבעית ותכנון קריאות-כלים אוטומטי (tool use) עובדים רק במצב
-  Anthropic; במצב Echo זה מבוסס מילות-מפתח פשוטות בלבד.
+  Anthropic או Groq; במצב Echo זה מבוסס מילות-מפתח פשוטות בלבד.
 - קלט קול תלוי בחיבור אינטרנט (Google Speech Recognition); אין עדיין מנוע
   offline.
 - אין עדיין: תזמון משימות, אינטגרציה עם יומן/מייל, זיהוי דובר, wake-word

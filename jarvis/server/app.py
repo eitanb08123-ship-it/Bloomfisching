@@ -62,7 +62,8 @@ async def websocket_endpoint(websocket: WebSocket):
     _active_socket = websocket
     log.info("UI connected")
 
-    mode = "ANTHROPIC" if ai_core.provider.__class__.__name__ == "AnthropicProvider" else "ECHO"
+    provider_labels = {"AnthropicProvider": "ANTHROPIC", "GroqProvider": "GROQ"}
+    mode = provider_labels.get(ai_core.provider.__class__.__name__, "ECHO")
     await websocket.send_json({"type": "mode", "mode": mode})
 
     for message in memory_store.get_history():

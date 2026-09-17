@@ -24,5 +24,15 @@ class Tool:
             "input_schema": self.parameters,
         }
 
+    def to_openai_schema(self) -> dict:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
     def run(self, **kwargs) -> str:
         return self.handler(**kwargs)

@@ -13,6 +13,8 @@ SYSTEM_PROMPT = (
 
 
 class AnthropicProvider(AIProvider):
+    schema_format = "anthropic"
+
     def __init__(self, api_key: str, model: str):
         self._client = anthropic.Anthropic(api_key=api_key)
         self._model = model
