@@ -112,8 +112,9 @@ class AICore:
         if command == "serious_on":
             self.permissions.autonomous = True
             return (
-                "Serious mode on — I'll act immediately without asking, for anything you ask me to do. "
-                "Say 'חזור' or 'undo' any time to reverse my last action."
+                "Serious mode on — I'll act immediately without asking. "
+                "Say 'חזור'/'undo' any time to reverse my last action. "
+                "מה תרצה שאבדוק או אעשה?"
             )
         if command == "voice_off":
             self.settings["voice"]["enabled"] = False
