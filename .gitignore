@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+jarvis/config/settings.json
+jarvis/data/
+jarvis/logs/

@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+psutil
+anthropic
+pywebview
+
+# Optional, for voice features (see README for Windows install notes):
+SpeechRecognition
+PyAudio
+pyttsx3
