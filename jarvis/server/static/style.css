@@ -169,7 +169,15 @@ body {
   padding-bottom: 8px;
   font-size: 13px;
 }
-.msg { max-width: 70%; padding: 8px 12px; border-radius: 8px; line-height: 1.4; }
+.msg {
+  max-width: 70%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  line-height: 1.4;
+  opacity: 1;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.msg.fade-out { opacity: 0; transform: translateY(6px); }
 .msg.user { align-self: flex-end; background: rgba(51, 232, 255, 0.12); border: 1px solid rgba(51,232,255,0.3); }
 .msg.assistant { align-self: flex-start; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); white-space: pre-wrap; }
 .msg.system { align-self: center; color: var(--text-dim); font-style: italic; font-size: 12px; }

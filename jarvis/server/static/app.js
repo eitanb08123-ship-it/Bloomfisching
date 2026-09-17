@@ -25,12 +25,18 @@
   let ws;
   let currentConfirmRequestId = null;
 
+  const BUBBLE_LIFETIME_MS = 6000;
+  const BUBBLE_FADE_MS = 500;
+
   function addMessage(role, text) {
     const el = document.createElement('div');
     el.className = `msg ${role}`;
     el.textContent = text;
     chatLog.appendChild(el);
     chatLog.scrollTop = chatLog.scrollHeight;
+
+    setTimeout(() => el.classList.add('fade-out'), BUBBLE_LIFETIME_MS - BUBBLE_FADE_MS);
+    setTimeout(() => el.remove(), BUBBLE_LIFETIME_MS);
   }
 
   function setConnected(connected) {
