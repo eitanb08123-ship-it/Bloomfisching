@@ -63,13 +63,20 @@ forget <key>
 {
   "ai_provider": "groq",
   "groq_api_key": "gsk_...",
-  "groq_model": "llama-3.3-70b-versatile"
+  "groq_model": "openai/gpt-oss-120b"
 }
 ```
 
 זה עובד בדיוק כמו מצב Anthropic (tool use אמיתי דרך ה-API), רק עם מודל אחר
-ברקע. אפשר להחליף את `groq_model` לכל מודל אחר שזמין בחשבון ה-Groq שלך
-(שים לב שלא כל מודל תומך ב-function calling).
+ברקע. הרשימה של מודלים זמינים אצל Groq משתנה בזמן (מודלים מתווספים/מוסרים) —
+כדי לראות מה זמין לחשבון שלך כרגע:
+
+```powershell
+python -c "import json; from groq import Groq; s=json.load(open('jarvis/config/settings.json')); c=Groq(api_key=s['groq_api_key']); print([m.id for m in c.models.list().data])"
+```
+
+אפשר להחליף את `groq_model` לכל מודל אחר מהרשימה שתומך ב-chat completions +
+function calling (לא כל מודל שם מתאים — יש גם מודלים ל-STT/TTS/בטיחות בלבד).
 
 ### קול (אופציונלי)
 
