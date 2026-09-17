@@ -108,18 +108,18 @@ class AICore:
     def _handle_command(self, command: str) -> str:
         if command == "serious_off":
             self.permissions.autonomous = False
-            return "Serious mode off — I'll ask for confirmation again before running actions."
+            return "מצב רציני כבוי — אני אחזור לבקש אישור לפני שאני מבצע פעולות."
         if command == "serious_on":
             self.permissions.autonomous = True
             return (
-                "Serious mode on — I'll act immediately without asking. "
-                "Say 'חזור'/'undo' any time to reverse my last action. "
+                "מצב רציני פעיל — אני אבצע כל בקשה שלך מיד בלי לשאול. "
+                "תגיד 'חזור' או 'undo' בכל שלב כדי לבטל את הפעולה האחרונה שלי. "
                 "מה תרצה שאבדוק או אעשה?"
             )
         if command == "voice_off":
             self.settings["voice"]["enabled"] = False
-            return "Voice replies turned off."
+            return "הקראה בקול כבויה."
         if command == "voice_on":
             self.settings["voice"]["enabled"] = True
-            return "Voice replies turned on — I'll speak my replies out loud from now on."
+            return "הקראה בקול פעילה — מעכשיו אקריא את התשובות שלי בקול."
         return "(unrecognized command)"
