@@ -80,6 +80,34 @@ python -c "import json; from groq import Groq; s=json.load(open('jarvis/config/s
 אפשר להחליף את `groq_model` לכל מודל אחר מהרשימה שתומך ב-chat completions +
 function calling (לא כל מודל שם מתאים — יש גם מודלים ל-STT/TTS/בטיחות בלבד).
 
+### הפעלה עם Claude Code CLI (מנצל מנוי Claude Pro/Max, בלי חיוב נפרד לפי טוקן)
+
+דורש התקנה מקומית: `npm install -g @anthropic-ai/claude-code`, ואז הרצת
+`claude` פעם אחת באופן אינטראקטיבי כדי להתחבר עם חשבון ה-Pro/Max שלך
+(**לא** עם `ANTHROPIC_API_KEY` — אם ה-CLI מחובר עם מפתח API, עדיין תחויב
+לפי טוקן, וכל הרעיון פה מתבטל). ב-`jarvis/config/settings.json`:
+
+```json
+{
+  "ai_provider": "claude_code_cli",
+  "claude_code_cli_command": "claude",
+  "claude_code_cli_timeout_seconds": 45
+}
+```
+
+`claude_code_cli_command` — שם הפקודה או נתיב מלא ל-CLI (ברירת מחדל: `claude`,
+מניח שהוא ב-PATH). `claude_code_cli_timeout_seconds` — כמה זמן לחכות לתשובה
+לפני שמוותרים (ברירת מחדל 45 שניות).
+
+**מגבלה חשובה:** מצב זה הוא **טקסט בלבד** — ה-CLI מריץ את הכלים המובנים שלו
+(bash, עריכת קבצים...) שאין להם קשר לכלים של JARVIS עצמו, ואין דרך אמינה
+לגרום לתהליך CLI חיצוני "לקרוא" לכלים של JARVIS (`open_application`,
+`web_search`, זיכרון וכו'). כלומר: **במצב הזה JARVIS לא יכול להפעיל כלים
+בכלל** — רק לשוחח. לשם השוואה, מצבי Anthropic/Groq למעלה כן תומכים ב-tool use
+מלא. מטעמי בטיחות, כל קריאה ל-CLI רצה עם `--restricted` (מסיר לגמרי את
+היכולת של ה-CLI להריץ bash/לערוך קבצים) ו-`--permission-prompts none` (כל
+דבר שהיה דורש אישור נדחה אוטומטית במקום להיתקע בלי טרמינל שיענה לו).
+
 ### קול (אופציונלי)
 
 זה תלוי בחבילות נוספות שלא נכללות בהתקנה הרגילה (כי `PyAudio` דורש קומפיילר

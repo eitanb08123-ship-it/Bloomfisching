@@ -24,6 +24,14 @@ def build_provider(settings: dict):
 
         return GroqProvider(settings["groq_api_key"], settings["groq_model"])
 
+    if provider_name == "claude_code_cli":
+        from jarvis.core.providers.claude_code_cli_provider import ClaudeCodeCliProvider
+
+        return ClaudeCodeCliProvider(
+            command=settings.get("claude_code_cli_command", "claude"),
+            timeout_seconds=settings.get("claude_code_cli_timeout_seconds", 45),
+        )
+
     if provider_name in ("anthropic", "groq"):
         log.warning("ai_provider is '%s' but no matching API key is set; falling back to echo mode.", provider_name)
     return EchoProvider()

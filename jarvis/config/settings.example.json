@@ -4,6 +4,8 @@
   "anthropic_model": "claude-sonnet-5",
   "groq_api_key": "",
   "groq_model": "openai/gpt-oss-120b",
+  "claude_code_cli_command": "claude",
+  "claude_code_cli_timeout_seconds": 45,
   "server": {
     "host": "127.0.0.1",
     "port": 8756,
