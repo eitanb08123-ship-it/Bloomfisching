@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="scanlines"></div>
+
+  <header class="topbar">
+    <div class="brand">J.A.R.V.I.S<span class="brand-dot">.</span></div>
+    <div class="conn" id="conn-indicator"><span class="dot"></span><span id="conn-text">Connecting…</span></div>
+  </header>
+
+  <main class="stage">
+    <canvas id="sphere" width="640" height="640"></canvas>
+    <div class="core-badge">JARVIS</div>
+    <div class="mode-badge" id="mode-badge">MODE: —</div>
+  </main>
+
+  <aside class="status-panel">
+    <h3>System Status</h3>
+    <div class="metric">
+      <label>CPU</label>
+      <div class="bar"><div class="bar-fill" id="cpu-bar"></div></div>
+      <span id="cpu-val">0%</span>
+    </div>
+    <div class="metric">
+      <label>RAM</label>
+      <div class="bar"><div class="bar-fill" id="mem-bar"></div></div>
+      <span id="mem-val">0%</span>
+    </div>
+    <div class="metric">
+      <label>DISK</label>
+      <div class="bar"><div class="bar-fill" id="disk-bar"></div></div>
+      <span id="disk-val">0%</span>
+    </div>
+
+    <h3>Tools</h3>
+    <ul class="tool-list">
+      <li><span class="tier-dot tier-read"></span>System Info</li>
+      <li><span class="tier-dot tier-read"></span>File Search / Read</li>
+      <li><span class="tier-dot tier-read"></span>Web Search</li>
+      <li><span class="tier-dot tier-action"></span>Open App / Website</li>
+      <li><span class="tier-dot tier-critical"></span>Close App</li>
+      <li><span class="tier-dot tier-action"></span>Memory Notes</li>
+      <li><span class="tier-dot tier-read"></span>Undo Last Action</li>
+    </ul>
+
+    <h3>Activity</h3>
+    <ul class="activity-list" id="activity-list">
+      <li class="activity-empty">Nothing yet.</li>
+    </ul>
+  </aside>
+
+  <section class="chat-panel">
+    <div class="chat-log" id="chat-log"></div>
+    <form class="chat-input" id="chat-form">
+      <button type="button" id="mic-btn" title="Voice input">🎙</button>
+      <input type="text" id="chat-text" placeholder="Ask JARVIS anything…" autocomplete="off">
+      <button type="submit">Send</button>
+    </form>
+  </section>
+
+  <script src="/static/particles.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,19 +1,250 @@
+# JARVIS — עוזר AI אישי (MVP)
 
-<p align="center">
-  <img src="https://i.postimg.cc/QxLgn2KX/Aurora-Roslit-(2).png" alt="Logo">
-</p>
+עוזר AI מקומי בהשראת JARVIS מ־Iron Man: שיחה בשפה טבעית, כלים לשליטה בסיסית
+במחשב, זיכרון מקומי, וממשק עתידני עם כדור חלקיקים אנימטיבי. גרסה זו היא ה־MVP
+הראשון — עובד מקצה לקצה, ומיועד להתרחבות בהדרגה.
 
+## הפעלה מהירה (Windows)
 
+```powershell
+py -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python run.py
+```
 
+(קול הוא הרחבה נפרדת ואופציונלית — ראה "קול (אופציונלי)" למטה — כדי שהתקנה
+בסיסית תמיד תצליח גם למי שאין לו כלי קומפילציה מותקנים.)
 
-## Support
+בהרצה ראשונה נוצר הקובץ `jarvis/config/settings.json` (עותק של
+`settings.example.json`). זה הקובץ שעורכים כדי להגדיר מפתח API, שפת קול וכו' —
+הוא לא נכנס ל-git.
 
-For live support, please join [https://discord.gg/mangos](https://discord.gg/mangos)
+חלון JARVIS ייפתח אוטומטית (חלון אפליקציה עצמאי דרך `pywebview`, ואם החבילה
+לא מותקנת — ייפתח בדפדפן ברירת המחדל בכתובת `http://127.0.0.1:8756`).
 
-## Authors
+### הפעלה בלי מפתח API (מצב Echo)
 
-- [@rushilol](https://www.github.com/injuriez) (Owner of bloom)
-- [@Cweamy](https://github.com/Cweamy) (Bloom Developer) 
-- [@iamnotbobby](https://github.com/iamnotbobby) (Contributor)
-- [@GG-Green](https://github.com/GG-Green) (Bloom Developer) ↓ i gave lunar the original formula ↓ HES LYING
-- [@Lunarosity](https://github.com/Lunarosity) (Contributor) ^^ he begs me for help on everything he makes
+אין צורך במפתח כדי לבדוק שהמערכת עובדת. במצב הזה JARVIS מבין פקודות פשוטות
+בלבד (לא שיחה חופשית), למשל:
+
+```
+system info
+search <טקסט>
+google <שאילתה>
+read file <נתיב מלא>
+open <שם תוכנה / קובץ>
+open website <כתובת>
+close <שם תהליך>
+remember <key> = <value>
+recall
+forget <key>
+undo
+```
+
+### הפעלה עם Claude (שיחה חופשית + הבנת כוונות)
+
+ב-`jarvis/config/settings.json`:
+
+```json
+{
+  "ai_provider": "anthropic",
+  "anthropic_api_key": "sk-ant-...",
+  "anthropic_model": "claude-sonnet-5"
+}
+```
+
+ואז JARVIS ינהל שיחה טבעית מלאה ויחליט בעצמו מתי להשתמש בכלים.
+
+### הפעלה עם Groq (שיחה חופשית + הבנת כוונות, חינמי/מהיר)
+
+מפתח מקבלים ב-[console.groq.com](https://console.groq.com/keys). ב-
+`jarvis/config/settings.json`:
+
+```json
+{
+  "ai_provider": "groq",
+  "groq_api_key": "gsk_...",
+  "groq_model": "openai/gpt-oss-120b"
+}
+```
+
+זה עובד בדיוק כמו מצב Anthropic (tool use אמיתי דרך ה-API), רק עם מודל אחר
+ברקע. הרשימה של מודלים זמינים אצל Groq משתנה בזמן (מודלים מתווספים/מוסרים) —
+כדי לראות מה זמין לחשבון שלך כרגע:
+
+```powershell
+python -c "import json; from groq import Groq; s=json.load(open('jarvis/config/settings.json')); c=Groq(api_key=s['groq_api_key']); print([m.id for m in c.models.list().data])"
+```
+
+אפשר להחליף את `groq_model` לכל מודל אחר מהרשימה שתומך ב-chat completions +
+function calling (לא כל מודל שם מתאים — יש גם מודלים ל-STT/TTS/בטיחות בלבד).
+
+### הפעלה עם Claude Code CLI (מנצל מנוי Claude Pro/Max, בלי חיוב נפרד לפי טוקן)
+
+דורש התקנה מקומית: `npm install -g @anthropic-ai/claude-code`, ואז הרצת
+`claude` פעם אחת באופן אינטראקטיבי כדי להתחבר עם חשבון ה-Pro/Max שלך
+(**לא** עם `ANTHROPIC_API_KEY` — אם ה-CLI מחובר עם מפתח API, עדיין תחויב
+לפי טוקן, וכל הרעיון פה מתבטל). ב-`jarvis/config/settings.json`:
+
+```json
+{
+  "ai_provider": "claude_code_cli",
+  "claude_code_cli_command": "claude",
+  "claude_code_cli_timeout_seconds": 45
+}
+```
+
+`claude_code_cli_command` — שם הפקודה או נתיב מלא ל-CLI (ברירת מחדל: `claude`,
+מניח שהוא ב-PATH). `claude_code_cli_timeout_seconds` — כמה זמן לחכות לתשובה
+לפני שמוותרים (ברירת מחדל 45 שניות).
+
+**מגבלה חשובה:** מצב זה הוא **טקסט בלבד** — ה-CLI מריץ את הכלים המובנים שלו
+(bash, עריכת קבצים...) שאין להם קשר לכלים של JARVIS עצמו, ואין דרך אמינה
+לגרום לתהליך CLI חיצוני "לקרוא" לכלים של JARVIS (`open_application`,
+`web_search`, זיכרון וכו'). כלומר: **במצב הזה JARVIS לא יכול להפעיל כלים
+בכלל** — רק לשוחח. לשם השוואה, מצבי Anthropic/Groq למעלה כן תומכים ב-tool use
+מלא. מטעמי בטיחות, כל קריאה ל-CLI רצה עם `--restricted` (מסיר לגמרי את
+היכולת של ה-CLI להריץ bash/לערוך קבצים) ו-`--permission-prompts none` (כל
+דבר שהיה דורש אישור נדחה אוטומטית במקום להיתקע בלי טרמינל שיענה לו).
+
+### קול (אופציונלי)
+
+זה תלוי בחבילות נוספות שלא נכללות בהתקנה הרגילה (כי `PyAudio` דורש קומפיילר
+ב-Windows ועלול להיכשל אצל חלק מהמשתמשים). כדי להפעיל קול:
+
+```powershell
+pip install -r requirements-voice.txt
+```
+
+אם ההתקנה נכשלת על `PyAudio` עם שגיאה על "Microsoft Visual C++ 14.0 required",
+יש שתי אפשרויות: להתקין את [Build Tools for Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+(רק את "Desktop development with C++"), או לנסות
+`pip install pipwin && pipwin install pyaudio` כתחליף.
+
+אחרי שההתקנה הצליחה, ב-`settings.json` תחת `"voice": {"enabled": true, ...}`,
+ולחיצה על כפתור 🎙 בממשק תפעיל האזנה חד-פעמית מהמיקרופון (Google Speech
+Recognition) ותקריא את התשובה בקול (SAPI5 של Windows דרך `pyttsx3`).
+
+### פתיחת אפליקציות "רואים אותו עושה" (אופציונלי)
+
+כברירת מחדל, פתיחת אפליקציה (`open_application`) קורית מיידית וללא אנימציה
+(`os.startfile`). אם מתקינים חבילה נוספת:
+
+```powershell
+pip install pyautogui
+```
+
+JARVIS יפתח אפליקציות (לפי **שם**, לא נתיב קובץ) בצורה נראית: לוחץ Windows,
+מקליד את השם, ולוחץ Enter — ממש כמו שמישהו עושה את זה ידנית. אם pyautogui לא
+מותקן, זה פשוט חוזר לשיטה המיידית בלי שום שגיאה — לגמרי אופציונלי.
+
+מומלץ להתקין גם `pip install pyperclip` (אופציונלי בנפרד): בלעדיו, השם
+מוקלד תו-אחר-תו לפי הפריסה הפעילה במקלדת — פריסה שאינה אנגלית תגרום להקלדת
+תווים אחרים לגמרי (למשל "WhatsApp" יוקלד כאותיות עבריות שיושבות על אותם
+מקשים פיזיים, וחיפוש ה-Start Menu לא ימצא כלום). עם pyperclip מותקן, השם
+מועתק ללוח ומודבק (Ctrl+V) במקום זאת — בלתי תלוי בפריסת המקלדת. כמו כן,
+פתיחה נראית מדווחת "הצליחה" רק אחרי שנמצא תהליך תואם שאכן עלה — לא רק כי
+רצף המקשים עצמו לא זרק שגיאה.
+
+**שים לב:** זו הקלדה **אמיתית** על המחשב שלך (לא רק בתוך חלון JARVIS) — למשך
+כשנייה, לא כדאי להיות באמצע הקלדה במשהו אחר בדיוק כשזה קורה.
+
+חיפוש קבצים (`search_files`) גם פותח (ב-Windows) חלון חיפוש אמיתי של File
+Explorer במקביל לחיפוש התוכני — כך שרואים אותו "מחפש" ולא רק מקבלים טקסט
+בצ'אט. זה לא דורש שום התקנה נוספת.
+
+## מה נבנה
+
+```
+run.py                        נקודת הכניסה — מרים שרת + פותח חלון
+jarvis/
+  core/ai_core.py             התזמור: היסטוריה → מודל → כלים → תשובה
+  core/providers/             Echo (בלי API), Anthropic ו-Groq (שניהם עם tool use אמיתי)
+  tools/                      כל כלי הוא מודול נפרד + רמת הרשאה
+  permissions/manager.py      מרשה כל קריאת כלי מיד (אין אישורים)
+  core/undo_stack.py          מעקב אחרי פעולות הפיכות, בשביל "חזור"/"undo"
+  memory/memory_store.py      זיכרון מקומי (data/memory.json, קריא לעריכה ידנית)
+  voice/                      זיהוי דיבור + טקסט-לדיבור (נכשל בעדינות אם לא מותקן)
+  server/app.py               FastAPI + WebSocket שמחבר הכול לממשק
+  server/static/              index.html / style.css / app.js / particles.js
+  utils/                      קונפיג ולוגים (jarvis/logs/jarvis.log)
+```
+
+## הרשאות: פעולה מיידית + Undo
+
+JARVIS מבצע כל בקשה **מיד, בלי לשאול אישור** — אין חלון אישור בממשק בכלל. הבטיחות
+היחידה היא שאתה יכול להגיד "חזור" / "undo" בכל שלב כדי לבטל את **הפעולה
+האחרונה שביצע**. זו התנהגות קבועה, לא הגדרה להחלפה.
+
+JARVIS לא עוקף UAC, הרשאות קבצים או כל בקרת אבטחה של Windows — הוא רק קורא
+לפעולות רגילות של המערכת (subprocess, os.startfile וכו'), כך שאם Windows
+עצמו יבקש אישור, הוא עדיין יבקש.
+
+כל כלי מסומן ברמה (READ/ACTION/CRITICAL — נראה כנקודת צבע בפאנל "Tools"
+בממשק) — זה **מידע בלבד** כרגע, לא גורם לשום התנהגות שונה; שום רמה לא חוסמת
+או מעכבת ביצוע.
+
+**חשוב להבין את המגבלות של Undo:**
+
+- `remember_note` / `forget_note` — undo מלא ואמין (משחזר את הערך הקודם).
+- `open_application` — undo סוגר לפי שם התהליך; אם כבר היה עותק פתוח של
+  אותה תוכנה, ה-undo עלול לסגור את זה במקום את מה ש-JARVIS פתח.
+- `close_application` — undo פותח מחדש את התוכנה, אבל **כל מידע לא שמור
+  שהיה בה הולך לאיבוד ולא חוזר** — פתיחה מחדש היא לא שחזור מצב.
+- `open_website` — **אין** undo (אין דרך לזהות/לסגור טאב ספציפי בדפדפן).
+- כלי קריאה (מידע מערכת, חיפוש/קריאת קבצים, recall, web_search) — אין מה
+  לבטל, לא משנים כלום.
+
+`undo_last_action` מבטל רק את הפעולה **האחרונה שבוצעה**, אחת בכל פעם — אין
+היסטוריית undo מרובת שלבים.
+
+### קול תוך כדי שיחה, בלי לגעת בקובץ ההגדרות
+
+```
+תדליק קול           → תשובות ייקראו בקול (דורש requirements-voice.txt)
+תכבה קול            → מפסיק הקראה בקול
+```
+עובד גם במצב Echo, לא רק עם Groq/Claude. השינוי נשאר בתוקף כל עוד השרת רץ
+(עד סגירה/הפעלה מחדש של `python run.py`).
+
+### פאנל Activity
+
+בצד הממשק, מתחת ל-"Tools", יש פאנל "Activity" שמראה בזמן אמת כל פעולה
+שהתבצעה בפועל — שם הכלי, הפרמטרים, והתוצאה. מכיוון שאין יותר חלון אישור בכלל,
+זה המקום היחיד לראות בדיוק מה JARVIS עשה.
+
+### חיפוש באינטרנט (web_search)
+
+כשאתה מבקש במפורש ("google איך מתקינים...", "תחפש לי מידע על...") — JARVIS
+מחפש ב-DuckDuckGo (בלי מפתח API) ומחזיר כותרות + תקצירים + קישורים של
+התוצאות המובילות. הוא לא קורא את תוכן הדפים עצמם, רק את תוצאות החיפוש. אפשר
+לשלב את זה עם `remember_note` — למשל "תחפש X ותזכור מה שמצאת" — וזה יעבוד
+בשיחה אחת, כי המודל (Groq/Claude) יכול להפעיל כמה כלים ברצף לפי הצורך.
+
+### מה בכוונה לא נבנה
+
+בקשה לגרום ל-JARVIS לפעול **על דעת עצמו, בלי שתבקש** — לגלוש/לחפש/ללמוד
+נושאים, לשחק משחקים לבד, או ללמוד את הסיסמאות/אימייל שלך — לא מומשה, בכוונה.
+שלוש סיבות: (1) כל הודעה במצב Groq/Claude נשלחת לשרת API חיצוני — סיסמאות
+לא אמורות לעבור שם בכלל; (2) פעולה יזומה-עצמאית לגמרי (בלי בקשה שלך) היא
+סוכן בלתי מבוקר, לא עוזר אישי — גם כשכל פעולה בודדת מתבצעת מיד (כמו כאן),
+עדיין תמיד יש בקשה שלך שמפעילה אותה, לא JARVIS מחליט בעצמו; (3) "לשחק משחק"
+דורש הדמיית קלט (עכבר/מקלדת) שלא קיימת בקוד, ובהרבה משחקים
+אונליין זו הפרת תנאי שימוש. `web_search` ו-`open_website` פועלים רק כשאתה
+מבקש במפורש בהודעה — לא כרקע אוטונומי.
+
+## מגבלות ידועות של ה-MVP הזה
+
+- הבנת השפה הטבעית ותכנון קריאות-כלים אוטומטי (tool use) עובדים רק במצב
+  Anthropic או Groq; במצב Echo זה מבוסס מילות-מפתח פשוטות בלבד.
+- קלט קול תלוי בחיבור אינטרנט (Google Speech Recognition); אין עדיין מנוע
+  offline.
+- אין עדיין: תזמון משימות, אינטגרציה עם יומן/מייל, זיהוי דובר, wake-word
+  ("Hey JARVIS").
+- נבדק ונכתב בסביבת פיתוח לינוקס (אין כאן מכונת Windows); לפני שימוש אמיתי
+  יש להריץ פעם אחת על Windows ולוודא שפתיחת/סגירת אפליקציות ו-PyAudio עובדים
+  אצלך.
+
+זו נקודת התחלה מודולרית — כל שיפור הבא (זיכרון חכם יותר, כלים נוספים, wake
+word, שיפור עיצוב) נכנס כמודול חדש או תוספת לכלי קיים, בלי לגעת בשאר המערכת.
