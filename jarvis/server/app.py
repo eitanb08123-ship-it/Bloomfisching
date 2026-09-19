@@ -54,7 +54,11 @@ async def websocket_endpoint(websocket: WebSocket):
     _active_socket = websocket
     log.info("UI connected")
 
-    provider_labels = {"AnthropicProvider": "ANTHROPIC", "GroqProvider": "GROQ"}
+    provider_labels = {
+        "AnthropicProvider": "ANTHROPIC",
+        "GroqProvider": "GROQ",
+        "ClaudeCodeCliProvider": "CLAUDE CODE CLI",
+    }
     mode = provider_labels.get(ai_core.provider.__class__.__name__, "ECHO")
     await websocket.send_json({"type": "mode", "mode": mode})
 
