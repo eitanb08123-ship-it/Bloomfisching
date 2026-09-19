@@ -29,6 +29,15 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Group chat IDs end in "@g.us"; individual contacts end in "@c.us" or the
+// newer "@lid" format. Checking the ID suffix avoids fetching a full Chat
+// object (via msg.getChat() / client.getChatById()) just to read .isGroup —
+// that call has been observed to throw inside whatsapp-web.js's internal
+// page-evaluate code for some chats, and we don't need the full object here.
+function isGroupId(id) {
+  return id.endsWith('@g.us');
+}
+
 // ---------- Persistent store: per-contact history + pause state ----------
 // Kept as a small JSON file so history survives restarts. Writes are
 // debounced and go through a temp-file + rename to avoid corrupting the
@@ -223,8 +232,7 @@ async function processReply(contactId) {
     logError(`Gemini API call failed for ${contactId}:`, formatError(err));
     if (config.sendFailureMessage) {
       try {
-        const chat = await client.getChatById(contactId);
-        await chat.sendMessage(config.failureMessage);
+        await client.sendMessage(contactId, config.failureMessage);
       } catch (sendErr) {
         logError(`Failed to send fallback message to ${contactId}:`, formatError(sendErr));
       }
@@ -234,11 +242,20 @@ async function processReply(contactId) {
 
   if (!reply) return;
 
+  // The typing indicator needs a Chat object (client.getChatById), which has
+  // been observed to throw for some chats — treat it as optional and never
+  // let its failure stop the actual reply from being sent.
   try {
     const chat = await client.getChatById(contactId);
-    await chat.sendStateTyping().catch(() => {});
-    await sleep(typingDelayForText(reply));
-    await chat.sendMessage(reply);
+    await chat.sendStateTyping();
+  } catch (err) {
+    logError(`Could not show typing indicator for ${contactId} (continuing anyway):`, formatError(err));
+  }
+
+  await sleep(typingDelayForText(reply));
+
+  try {
+    await client.sendMessage(contactId, reply);
     log(`Replied to ${contactId}`);
   } catch (err) {
     logError(`Failed to send WhatsApp message to ${contactId}:`, formatError(err));
@@ -296,9 +313,7 @@ client.on('message', async (msg) => {
   try {
     if (msg.from === 'status@broadcast') return;
     if (msg.type !== 'chat') return; // skip media/stickers/etc. for now
-
-    const chat = await msg.getChat();
-    if (chat.isGroup && !config.respondToGroups) return;
+    if (isGroupId(msg.from) && !config.respondToGroups) return;
 
     const contactId = msg.from;
     const body = msg.body.trim();
@@ -307,12 +322,12 @@ client.on('message', async (msg) => {
     const lower = body.toLowerCase();
     if (lower === '/pause') {
       store.setContactPaused(contactId, true);
-      await chat.sendMessage('Auto-reply paused for this chat. Send /resume to turn it back on.');
+      await msg.reply('Auto-reply paused for this chat. Send /resume to turn it back on.');
       return;
     }
     if (lower === '/resume') {
       store.setContactPaused(contactId, false);
-      await chat.sendMessage('Auto-reply resumed for this chat.');
+      await msg.reply('Auto-reply resumed for this chat.');
       return;
     }
 
