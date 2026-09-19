@@ -60,18 +60,19 @@ whatsapp-claude-bot/
 
 ### First-time setup (the local setup UI)
 
-If `.env` is missing, or `GEMINI_API_KEY` in it is empty or not in a valid `AIza...` format,
-`npm start` prints something like:
+If `.env` is missing, or `GEMINI_API_KEY` in it is empty, `npm start` prints something like:
 
 ```
 Setup required: open http://localhost:3000 in your browser to enter your Gemini API key.
 ```
 
 1. Open that URL in your browser.
-2. Paste your Gemini API key (from https://aistudio.google.com/apikey — it starts with `AIza`) into
-   the form and click **Save**.
-3. If the key doesn't look like a valid Gemini key, the form rejects it immediately with an inline
-   error instead of saving it — no editing config files, no guessing the right format.
+2. Go to https://aistudio.google.com/apikey, open your key's details, and click **Copy key** (don't
+   select the text by hand — that can miss a character at either end).
+3. Paste it into the form and click **Save**.
+4. The form does a basic sanity check (length/characters) and rejects an obviously empty or malformed
+   paste with an inline error, but it doesn't assume a specific prefix — Google has shipped more than
+   one key format over time.
 4. On success, the page confirms it saved, the local server shuts down, and the bot starts
    automatically in the same terminal — no need to run `npm start` again.
 

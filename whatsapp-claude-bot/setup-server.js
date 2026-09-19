@@ -17,12 +17,16 @@ const FIELDS = [
     key: 'GEMINI_API_KEY',
     label: 'Gemini API key',
     required: true,
-    placeholder: 'AIza...',
-    help: 'From aistudio.google.com/apikey. Must start with "AIza".',
-    validate: (value) => /^AIza[A-Za-z0-9_-]{35,}$/.test(value.trim()),
+    placeholder: 'Paste the key from aistudio.google.com/apikey',
+    help: 'From aistudio.google.com/apikey — click "Copy key" on the API key details dialog and paste it here.',
+    // Google has shipped more than one key format for Gemini API keys
+    // (classic "AIza..." keys and newer ones like "AQ...."), so this only
+    // does a loose sanity check rather than asserting a specific prefix.
+    validate: (value) => /^[A-Za-z0-9._-]{20,}$/.test(value.trim()),
     invalidMessage:
-      'That doesn\'t look like a valid Gemini API key — it should start with "AIza" ' +
-      '(create one at aistudio.google.com/apikey).',
+      'That doesn\'t look like a valid API key — check you copied the whole thing with no extra ' +
+      'spaces or characters (use the "Copy key" button on aistudio.google.com/apikey rather than ' +
+      'selecting the text by hand).',
   },
 ];
 
