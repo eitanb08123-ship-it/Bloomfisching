@@ -17,9 +17,83 @@ try:
 except ImportError:
     _PYAUTOGUI_AVAILABLE = False
 
+try:
+    import pyperclip
+
+    _PYPERCLIP_AVAILABLE = True
+except ImportError:
+    _PYPERCLIP_AVAILABLE = False
+
 
 def _looks_like_path(target: str) -> bool:
     return os.path.exists(target) or os.sep in target or "/" in target
+
+
+def _wait_for_clipboard(text: str, timeout: float = 1.0, poll: float = 0.05) -> bool:
+    """Polls pyperclip.paste() until it matches what was just copied, or
+    `timeout` runs out. A single fixed sleep() after copy() is not a
+    reliable guarantee that Ctrl+V will paste the NEW text and not
+    something stale under real clipboard contention. Returns False (not
+    True) on timeout so the caller can at least log it - the caller
+    proceeds either way, since there is nothing better to fall back to
+    once the paste hotkey actually fires."""
+    if not _PYPERCLIP_AVAILABLE:
+        return False
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            if pyperclip.paste() == text:
+                return True
+        except Exception:
+            pass
+        time.sleep(poll)
+    return False
+
+
+def _type_app_name(app_name: str) -> None:
+    """Types `app_name` into the Start Menu search box via clipboard-paste
+    rather than pyautogui.typewrite()'s raw keystrokes. typewrite() sends
+    key events that map to whatever the ACTIVE KEYBOARD LAYOUT says a
+    physical key produces - typing "WhatsApp" while a non-English layout
+    is active does not type W-h-a-t-s-A-p-p, it types whatever letters sit
+    on those same physical keys, and the Start Menu then finds nothing.
+    Falls back to typewrite() when pyperclip isn't installed - degraded
+    (layout-dependent again) but not broken."""
+    if _PYPERCLIP_AVAILABLE:
+        pyperclip.copy(app_name)
+        if not _wait_for_clipboard(app_name):
+            log.warning("Clipboard did not confirm '%s' before pasting into search - proceeding anyway.", app_name)
+        pyautogui.hotkey("ctrl", "v")
+    else:
+        pyautogui.typewrite(app_name, interval=0.03)
+
+
+def _is_process_running(app_name: str, timeout: float = 3.0, poll: float = 0.3) -> bool:
+    """Best-effort verification that a process matching `app_name` actually
+    started, polling for up to `timeout` seconds. Without this, a visible
+    launch reports success the moment the simulated Start-Menu keystrokes
+    ran without raising - true even when they typed into the wrong window
+    (unlikely once _type_app_name() pastes instead of typing raw keys, but
+    still possible if Start Menu itself didn't open in time) and nothing
+    actually launched. psutil is already a hard dependency of this module
+    (see _close_application below), so no availability guard is needed
+    here the way an optional dependency would need one."""
+    needle = app_name.lower()
+    if not needle:
+        return True
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        for proc in psutil.process_iter(["name"]):
+            try:
+                pname = (proc.info.get("name") or "").lower()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+            if pname.endswith(".exe"):
+                pname = pname[:-4]
+            if needle in pname or pname in needle:
+                return True
+        time.sleep(poll)
+    return False
 
 
 def _open_visibly_via_start_menu(app_name: str) -> str:
@@ -28,14 +102,25 @@ def _open_visibly_via_start_menu(app_name: str) -> str:
     used for bare app names (not file/folder paths, which Start-menu search
     doesn't resolve reliably). Real keyboard input goes system-wide for
     ~1 second - opening the Start menu grabs focus itself, but avoid
-    triggering this while typing something else at the exact same moment."""
+    triggering this while typing something else at the exact same moment.
+
+    Verifies the app actually started (_is_process_running()) before
+    claiming success - previously this returned "Launched" the instant the
+    keystroke sequence itself didn't raise, even if Start Menu found
+    nothing to open."""
     try:
         pyautogui.press("win")
         time.sleep(0.6)
-        pyautogui.typewrite(app_name, interval=0.03)
+        _type_app_name(app_name)
         time.sleep(0.4)
         pyautogui.press("enter")
-        return f"Launched: {app_name} (opened visibly via the Start menu)"
+        time.sleep(1.5)  # give the app a moment to actually start before checking
+        if _is_process_running(app_name):
+            return f"Launched: {app_name} (opened visibly via the Start menu)"
+        return (
+            f"Could not confirm that {app_name} launched via the Start menu - "
+            f"it may still be loading, or it might not be installed."
+        )
     except Exception as exc:
         log.warning("Visible launch failed for '%s', falling back to instant launch: %s", app_name, exc)
         return _open_application_instant(app_name)
