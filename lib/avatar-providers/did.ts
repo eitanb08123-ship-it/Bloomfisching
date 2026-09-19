@@ -24,9 +24,17 @@ interface DidGetTalkResponse {
   error?: { description?: string; kind?: string } | string;
 }
 
+function throwForFailedResponse(status: number, body: string): never {
+  const message = describeHttpError(status, body);
+  // 401/403 mean the key itself is the problem - surface it as a server
+  // misconfiguration (with the provider's own error text logged) rather
+  // than a generic upstream failure.
+  throw new ProviderError(message, status === 401 || status === 403 ? 500 : 502);
+}
+
 function describeHttpError(status: number, body: string): string {
   if (status === 401 || status === 403) {
-    return "The avatar-video provider rejected our API key. Check the server's DID_API_KEY configuration.";
+    return `The avatar-video provider rejected our API key (HTTP ${status}). Check the server's DID_API_KEY configuration. Provider response: ${body || "(empty)"}`;
   }
   if (status === 429) {
     return "The avatar-video provider's rate limit or free-tier quota has been reached. Please try again later.";
@@ -34,7 +42,7 @@ function describeHttpError(status: number, body: string): string {
   if (status === 400) {
     return `The avatar-video provider rejected the request: ${body || "invalid input."}`;
   }
-  return "The avatar-video provider is currently unavailable. Please try again in a moment.";
+  return `The avatar-video provider is currently unavailable (HTTP ${status}). Please try again in a moment. Provider response: ${body || "(empty)"}`;
 }
 
 export class DidAvatarProvider implements AvatarProvider {
@@ -76,8 +84,7 @@ export class DidAvatarProvider implements AvatarProvider {
     });
 
     if (!response.ok) {
-      const body = await response.text();
-      throw new ProviderError(describeHttpError(response.status, body), response.status === 401 ? 500 : 502);
+      throwForFailedResponse(response.status, await response.text());
     }
 
     const data = (await response.json()) as DidCreateTalkResponse;
@@ -94,8 +101,7 @@ export class DidAvatarProvider implements AvatarProvider {
     });
 
     if (!response.ok) {
-      const body = await response.text();
-      throw new ProviderError(describeHttpError(response.status, body), response.status === 401 ? 500 : 502);
+      throwForFailedResponse(response.status, await response.text());
     }
 
     const data = (await response.json()) as DidGetTalkResponse;
