@@ -5,6 +5,9 @@ import { getVoiceById } from "@/lib/voices";
 import { checkRateLimit, getClientKey } from "@/lib/rate-limit";
 import { MAX_TEXT_LENGTH, MIN_TEXT_LENGTH } from "@/lib/validation";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export async function POST(request: Request) {
   const rateLimit = checkRateLimit(getClientKey(request));
   if (!rateLimit.allowed) {

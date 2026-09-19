@@ -57,6 +57,7 @@ export class DidAvatarProvider implements AvatarProvider {
   async createVideo(params: CreateVideoParams): Promise<CreateVideoResult> {
     const response = await fetch(`${this.baseUrl}/talks`, {
       method: "POST",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: buildAuthHeader(this.apiKey),
@@ -86,6 +87,7 @@ export class DidAvatarProvider implements AvatarProvider {
   async getJobStatus(jobId: string): Promise<JobStatusResult> {
     const response = await fetch(`${this.baseUrl}/talks/${encodeURIComponent(jobId)}`, {
       method: "GET",
+      cache: "no-store",
       headers: {
         Authorization: buildAuthHeader(this.apiKey),
       },

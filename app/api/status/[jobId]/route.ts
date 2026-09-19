@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAvatarProvider, ProviderError } from "@/lib/avatar-providers";
 
+// This is polled repeatedly for a job's live status - never let Next.js
+// cache the route or reuse a stale response.
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export async function GET(_request: Request, { params }: { params: { jobId: string } }) {
   const { jobId } = params;
   if (!jobId) {
