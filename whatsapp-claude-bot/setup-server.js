@@ -14,15 +14,15 @@ const MAX_BODY_BYTES = 10 * 1024;
 // ever sent back to the browser or logged.
 const FIELDS = [
   {
-    key: 'ANTHROPIC_API_KEY',
-    label: 'Anthropic API key',
+    key: 'GEMINI_API_KEY',
+    label: 'Gemini API key',
     required: true,
-    placeholder: 'sk-ant-api03-...',
-    help: 'From console.anthropic.com/settings/keys. Must start with "sk-ant-".',
-    validate: (value) => /^sk-ant-[A-Za-z0-9_-]{20,}$/.test(value.trim()),
+    placeholder: 'AIza...',
+    help: 'From aistudio.google.com/apikey. Must start with "AIza".',
+    validate: (value) => /^AIza[A-Za-z0-9_-]{35,}$/.test(value.trim()),
     invalidMessage:
-      'That doesn\'t look like a valid Anthropic API key — it should start with "sk-ant-" ' +
-      '(create one at console.anthropic.com/settings/keys).',
+      'That doesn\'t look like a valid Gemini API key — it should start with "AIza" ' +
+      '(create one at aistudio.google.com/apikey).',
   },
 ];
 
@@ -138,7 +138,7 @@ function renderPage({ errors = [], saved = false } = {}) {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>WhatsApp Claude Bot — Setup</title>
+<title>WhatsApp Gemini Bot — Setup</title>
 <style>
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
@@ -198,7 +198,7 @@ function renderPage({ errors = [], saved = false } = {}) {
 </head>
 <body>
   <div class="card">
-    <h1>WhatsApp Claude Bot</h1>
+    <h1>WhatsApp Gemini Bot</h1>
     <p class="subtitle">One-time local setup — values are written only to your local .env file.</p>
     ${errorsHtml}
     ${savedHtml}
@@ -308,7 +308,7 @@ export function startSetupServer({ port = DEFAULT_PORT, onComplete } = {}) {
 
   server.listen(port, '127.0.0.1', () => {
     console.log(
-      `\nSetup required: open http://localhost:${port} in your browser to enter your Anthropic API key.\n`,
+      `\nSetup required: open http://localhost:${port} in your browser to enter your Gemini API key.\n`,
     );
   });
 

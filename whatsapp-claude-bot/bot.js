@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import pkg from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI, ApiError } from '@google/genai';
 import { config } from './config.js';
 
 const { Client, LocalAuth } = pkg;
@@ -93,7 +93,7 @@ class Store {
     if (contact.history.length > this.maxHistoryMessages) {
       contact.history = contact.history.slice(-this.maxHistoryMessages);
     }
-    // The Claude API requires the message list to start with a "user" turn.
+    // The Gemini API requires the message list to start with a "user" turn.
     while (contact.history.length && contact.history[0].role !== 'user') {
       contact.history.shift();
     }
@@ -107,33 +107,33 @@ class Store {
 
 const store = new Store(config.dataFile, config.maxHistoryMessages);
 
-// ---------- Claude API ----------
+// ---------- Gemini API ----------
 
-const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
 
-async function callClaudeWithRetry(params, attempt = 1) {
+async function callGeminiWithRetry(params, attempt = 1) {
   try {
-    return await anthropic.messages.create(params);
+    return await ai.models.generateContent(params);
   } catch (err) {
     const retryable =
-      err instanceof Anthropic.RateLimitError ||
-      err instanceof Anthropic.APIConnectionError ||
-      (err instanceof Anthropic.APIError && typeof err.status === 'number' && err.status >= 500);
+      err instanceof ApiError && typeof err.status === 'number'
+        ? err.status === 429 || err.status >= 500
+        : true; // network-level errors that aren't a structured ApiError are treated as transient
 
     if (retryable && attempt <= config.maxRetries) {
       const delay = config.retryBaseDelayMs * 2 ** (attempt - 1);
       logError(
-        `Claude API error (attempt ${attempt}/${config.maxRetries}), retrying in ${delay}ms:`,
+        `Gemini API error (attempt ${attempt}/${config.maxRetries}), retrying in ${delay}ms:`,
         err.message,
       );
       await sleep(delay);
-      return callClaudeWithRetry(params, attempt + 1);
+      return callGeminiWithRetry(params, attempt + 1);
     }
     throw err;
   }
 }
 
-// Cap how many Claude calls can be in flight at once so a burst of messages
+// Cap how many Gemini calls can be in flight at once so a burst of messages
 // across many chats doesn't hammer the API all at the same time.
 let activeCalls = 0;
 const waitQueue = [];
@@ -156,20 +156,26 @@ async function generateReply(contactId) {
   const history = store.getHistory(contactId);
   if (history.length === 0) return null;
 
+  const contents = history.map(({ role, content }) => ({
+    role,
+    parts: [{ text: content }],
+  }));
+
   const response = await withConcurrencyLimit(() =>
-    callClaudeWithRetry({
+    callGeminiWithRetry({
       model: config.model,
-      max_tokens: config.maxReplyTokens,
-      system: config.systemPrompt,
-      messages: history,
+      contents,
+      config: {
+        systemInstruction: config.systemPrompt,
+        maxOutputTokens: config.maxReplyTokens,
+      },
     }),
   );
 
-  const textBlock = response.content.find((block) => block.type === 'text');
-  const reply = textBlock?.text?.trim();
+  const reply = response.text?.trim();
   if (!reply) return null;
 
-  store.pushHistory(contactId, 'assistant', reply);
+  store.pushHistory(contactId, 'model', reply);
   return reply;
 }
 
@@ -206,7 +212,7 @@ async function processReply(contactId) {
   try {
     reply = await generateReply(contactId);
   } catch (err) {
-    logError(`Claude API call failed for ${contactId}:`, err.message);
+    logError(`Gemini API call failed for ${contactId}:`, err.message);
     if (config.sendFailureMessage) {
       try {
         const chat = await client.getChatById(contactId);
@@ -276,7 +282,7 @@ client.on('disconnected', async (reason) => {
   }
 });
 
-// Incoming messages: generate a Claude reply, plus the per-contact
+// Incoming messages: generate a Gemini reply, plus the per-contact
 // /pause and /resume commands.
 client.on('message', async (msg) => {
   try {

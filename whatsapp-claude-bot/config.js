@@ -29,13 +29,13 @@ function bool(name, fallback) {
   return raw.toLowerCase() === 'true';
 }
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.warn('[config] ANTHROPIC_API_KEY is not set. Set it in your environment or a .env file.');
+if (!process.env.GEMINI_API_KEY) {
+  console.warn('[config] GEMINI_API_KEY is not set. Set it in your environment or a .env file.');
 }
 
 export const config = {
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-  model: process.env.CLAUDE_MODEL || 'claude-opus-5',
+  geminiApiKey: process.env.GEMINI_API_KEY,
+  model: process.env.GEMINI_MODEL || 'gemini-flash-latest',
   maxReplyTokens: int('MAX_REPLY_TOKENS', 1024),
 
   maxHistoryMessages: int('MAX_HISTORY_MESSAGES', 15),

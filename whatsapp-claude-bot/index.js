@@ -6,7 +6,7 @@ function log(...args) {
 
 async function bootstrap() {
   if (!isSetupComplete()) {
-    log('No valid Anthropic API key found — starting the local setup UI...');
+    log('No valid Gemini API key found — starting the local setup UI...');
     await new Promise((resolve) => {
       startSetupServer({ onComplete: resolve });
     });
