@@ -17,6 +17,14 @@ function logError(...args) {
   console.error(`[${new Date().toISOString()}]`, ...args);
 }
 
+// A caught error's .message alone can be uselessly short (or even a single
+// character, for some whatsapp-web.js internal failures) — the stack trace
+// is what actually pinpoints where it came from.
+function formatError(err) {
+  if (err instanceof Error) return err.stack || err.message || String(err);
+  return typeof err === 'object' ? JSON.stringify(err) : String(err);
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -40,7 +48,7 @@ class Store {
       this.data = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
     } catch (err) {
       if (err.code !== 'ENOENT') {
-        logError(`Failed to load ${this.filePath}, starting with empty state:`, err.message);
+        logError(`Failed to load ${this.filePath}, starting with empty state:`, formatError(err));
       }
     }
   }
@@ -58,7 +66,7 @@ class Store {
       fs.writeFileSync(tmpPath, JSON.stringify(this.data, null, 2));
       fs.renameSync(tmpPath, this.filePath);
     } catch (err) {
-      logError('Failed to save state:', err.message);
+      logError('Failed to save state:', formatError(err));
     }
   }
 
@@ -124,7 +132,7 @@ async function callGeminiWithRetry(params, attempt = 1) {
       const delay = config.retryBaseDelayMs * 2 ** (attempt - 1);
       logError(
         `Gemini API error (attempt ${attempt}/${config.maxRetries}), retrying in ${delay}ms:`,
-        err.message,
+        formatError(err),
       );
       await sleep(delay);
       return callGeminiWithRetry(params, attempt + 1);
@@ -199,7 +207,7 @@ function scheduleReply(contactId) {
   const timer = setTimeout(() => {
     debounceTimers.delete(contactId);
     processReply(contactId).catch((err) =>
-      logError(`Unhandled error replying to ${contactId}:`, err.message),
+      logError(`Unhandled error replying to ${contactId}:`, formatError(err)),
     );
   }, config.debounceMs);
   debounceTimers.set(contactId, timer);
@@ -212,13 +220,13 @@ async function processReply(contactId) {
   try {
     reply = await generateReply(contactId);
   } catch (err) {
-    logError(`Gemini API call failed for ${contactId}:`, err.message);
+    logError(`Gemini API call failed for ${contactId}:`, formatError(err));
     if (config.sendFailureMessage) {
       try {
         const chat = await client.getChatById(contactId);
         await chat.sendMessage(config.failureMessage);
       } catch (sendErr) {
-        logError(`Failed to send fallback message to ${contactId}:`, sendErr.message);
+        logError(`Failed to send fallback message to ${contactId}:`, formatError(sendErr));
       }
     }
     return;
@@ -233,7 +241,7 @@ async function processReply(contactId) {
     await chat.sendMessage(reply);
     log(`Replied to ${contactId}`);
   } catch (err) {
-    logError(`Failed to send WhatsApp message to ${contactId}:`, err.message);
+    logError(`Failed to send WhatsApp message to ${contactId}:`, formatError(err));
   }
 }
 
@@ -278,7 +286,7 @@ client.on('disconnected', async (reason) => {
   try {
     await client.initialize();
   } catch (err) {
-    logError('Reconnect attempt failed:', err.message);
+    logError('Reconnect attempt failed:', formatError(err));
   }
 });
 
@@ -311,7 +319,7 @@ client.on('message', async (msg) => {
     store.pushHistory(contactId, 'user', body);
     scheduleReply(contactId);
   } catch (err) {
-    logError('Error handling incoming message:', err.message);
+    logError('Error handling incoming message:', formatError(err));
   }
 });
 
@@ -333,7 +341,7 @@ client.on('message_create', async (msg) => {
       log(`Global paused: ${store.isGloballyPaused()}`);
     }
   } catch (err) {
-    logError('Error handling self-sent command:', err.message);
+    logError('Error handling self-sent command:', formatError(err));
   }
 });
 
