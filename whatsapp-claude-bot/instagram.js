@@ -94,6 +94,15 @@ async function freshLogin() {
           'instagram.com) on this account, complete the "confirm it\'s you" prompt there, then restart the bot.',
       );
       throw err;
+    } else if (typeof err.message === 'string' && err.message.includes('out of date')) {
+      logError(
+        `Instagram: rejected the app version this bot claims to be (currently set to ${config.igAppVersion} ` +
+          `/ ${config.igAppVersionCode}). Open Instagram on your own phone -> Settings -> About and find the ` +
+          'version number shown there, then set IG_APP_VERSION to that value in .env (IG_APP_VERSION_CODE has ' +
+          'no in-app equivalent — try leaving it as-is, or search online for a currently-working pair for ' +
+          'instagram-private-api), then restart the bot.',
+      );
+      throw err;
     } else {
       throw err;
     }
@@ -109,6 +118,11 @@ async function freshLogin() {
 
 async function loginToInstagram() {
   ig.state.generateDevice(config.igUsername);
+  // The library's own hardcoded app version is years stale and Instagram
+  // now rejects it outright; override it with a newer (still best-effort)
+  // one. See config.js for how to adjust this if it's still rejected.
+  ig.state.constants.APP_VERSION = config.igAppVersion;
+  ig.state.constants.APP_VERSION_CODE = config.igAppVersionCode;
 
   const restoredUserId = await tryRestoreSession();
   if (restoredUserId) {

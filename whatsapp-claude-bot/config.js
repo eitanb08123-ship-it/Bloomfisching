@@ -70,6 +70,18 @@ export const config = {
   igPollIntervalMs: int('IG_POLL_INTERVAL_MS', 15000),
   igSessionFile: process.env.IG_SESSION_FILE || './data/instagram-session.json',
   igSeenFile: process.env.IG_SEEN_FILE || './data/instagram-seen.json',
+
+  // The login library claims to be a specific Instagram Android app version;
+  // its built-in default is years stale and Instagram's servers now reject
+  // it outright ("Your version of Instagram is out of date"). These bump it
+  // to a newer value — still a best-effort guess, not a verified-current
+  // one. If login still reports the app as out of date, check Settings ->
+  // About in your own Instagram app for the current version number and set
+  // IG_APP_VERSION to that (IG_APP_VERSION_CODE has no equivalent in-app
+  // display; try nearby/larger numbers, or search "instagram-private-api
+  // out of date" for a currently-working pair others have found).
+  igAppVersion: process.env.IG_APP_VERSION || '381.0.0.32.153',
+  igAppVersionCode: process.env.IG_APP_VERSION_CODE || '667813267',
 };
 
 config.instagramEnabled = Boolean(config.igUsername && config.igPassword);

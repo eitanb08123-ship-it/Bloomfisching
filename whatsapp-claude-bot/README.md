@@ -178,6 +178,10 @@ that's an informed choice this README can't make safer, only clearer.
 - If Instagram flags the login with a security checkpoint ("confirm it's you"), the bot can't complete
   that automatically — it logs an error telling you to open Instagram (app or instagram.com) on that
   account, complete the prompt there yourself, then restart the bot.
+- The bot claims to be a specific Instagram app version (`IG_APP_VERSION` / `IG_APP_VERSION_CODE`) when
+  talking to Instagram's servers — a value that needs to be updated over time as Instagram raises its
+  minimum accepted version, or login fails with "Your version of Instagram is out of date." See
+  **"App is out of date" errors** below if you hit this.
 
 ### Setup
 
@@ -193,6 +197,29 @@ that's an informed choice this README can't make safer, only clearer.
      worked.
    - If you instead see a security-checkpoint error, follow its instructions (complete the checkpoint in
      the real Instagram app/site, then restart the bot).
+   - If you see `Instagram failed to start: ... Your version of Instagram is out of date`, see the next
+     section — this is expected to need occasional adjustment, not a sign anything else is wrong.
+
+### "App is out of date" errors
+
+The login library ([`instagram-private-api`](https://github.com/dilame/instagram-private-api)) hasn't
+been updated since 2024 and claims to be an old Instagram app version by default; this project bumps
+that to a newer value (`IG_APP_VERSION` / `IG_APP_VERSION_CODE` in `.env.example`), but it's a
+best-effort guess, not a verified-current one — Instagram may reject it too, now or in the future, and
+whatever value works today will eventually go stale again the same way.
+
+If login fails with this error:
+
+1. Open Instagram on your own phone → **Settings → About** and note the version number shown there
+   (e.g. `391.0.0.32.90`).
+2. Set `IG_APP_VERSION` in `.env` to that value.
+3. `IG_APP_VERSION_CODE` has no equivalent shown in the app — try leaving it as-is first; if that still
+   fails, searching "instagram-private-api out of date" turns up version/code pairs other users have
+   found working (this is a known, recurring issue with this library, not specific to this project).
+4. Restart the bot.
+
+There's no way to guarantee a fix here in advance — it depends on what Instagram's servers currently
+require at the moment you're setting this up.
 
 ### Test it
 
@@ -247,6 +274,8 @@ See `.env.example` for the full list of tunable environment variables, including
 - `IG_SESSION_FILE` / `IG_SEEN_FILE` — where the cached Instagram login session and per-conversation
   "already replied" bookkeeping are stored (default `./data/instagram-session.json` and
   `./data/instagram-seen.json`).
+- `IG_APP_VERSION` / `IG_APP_VERSION_CODE` — the Instagram app version the bot claims to be; see
+  ["App is out of date" errors](#app-is-out-of-date-errors) if login rejects the default.
 
 ## Notes and caveats
 
