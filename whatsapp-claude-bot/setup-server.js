@@ -29,35 +29,25 @@ const FIELDS = [
       'selecting the text by hand).',
   },
   {
-    key: 'IG_PAGE_ACCESS_TOKEN',
-    label: 'Instagram Page access token (optional)',
+    key: 'IG_USERNAME',
+    label: 'Instagram username (optional)',
     required: false,
     placeholder: 'Leave blank to skip Instagram',
     help:
-      'From your Meta App — the Page access token for the Facebook Page linked to your Instagram ' +
-      'account. Only needed if you want Instagram DMs answered too; see the README for the full setup.',
-    validate: (value) => /^[A-Za-z0-9._-]{20,}$/.test(value.trim()),
-    invalidMessage: 'That doesn\'t look like a valid access token — check you copied the whole thing.',
+      'Logs in directly with your Instagram username/password (unofficial — see the README for the ' +
+      'real risks before filling this in). Only needed if you want Instagram DMs answered too.',
+    validate: (value) => value.trim().length >= 1 && !value.includes('@'),
+    invalidMessage: 'Enter your Instagram username (not an email address, and not the @ handle — no "@").',
   },
   {
-    key: 'IG_APP_SECRET',
-    label: 'Meta App secret (optional)',
+    key: 'IG_PASSWORD',
+    label: 'Instagram password (optional)',
     required: false,
+    inputType: 'password',
     placeholder: 'Leave blank to skip Instagram',
-    help: 'From your Meta App\'s Settings > Basic page — used to verify that webhook requests really come from Meta.',
-    validate: (value) => /^[A-Za-z0-9]{20,}$/.test(value.trim()),
-    invalidMessage: 'That doesn\'t look like a valid app secret — check you copied the whole thing.',
-  },
-  {
-    key: 'IG_VERIFY_TOKEN',
-    label: 'Instagram webhook verify token (optional)',
-    required: false,
-    placeholder: 'Any string you make up, e.g. a random password',
-    help:
-      'A password you invent yourself and enter in both places: here, and in the Meta App\'s webhook ' +
-      'setup screen. It just has to match in both places.',
-    validate: (value) => value.trim().length >= 6,
-    invalidMessage: 'Use at least 6 characters — this can be anything, you\'re choosing it yourself.',
+    help: 'The password for that same Instagram account.',
+    validate: (value) => value.length >= 6,
+    invalidMessage: 'That looks too short to be a real password — check what you typed.',
   },
 ];
 
@@ -155,7 +145,7 @@ function renderPage({ errors = [], saved = false } = {}) {
         <span class="field-label">${escapeHtml(field.label)}${
           field.required ? ' <span class="req">*</span>' : ''
         }</span>
-        <input type="text" name="${escapeHtml(field.key)}" placeholder="${escapeHtml(placeholder)}" autocomplete="off" spellcheck="false" />
+        <input type="${field.inputType || 'text'}" name="${escapeHtml(field.key)}" placeholder="${escapeHtml(placeholder)}" autocomplete="off" spellcheck="false" />
         ${field.help ? `<span class="field-help">${escapeHtml(field.help)}</span>` : ''}
       </label>`;
   }).join('\n');

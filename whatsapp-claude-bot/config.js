@@ -62,15 +62,14 @@ export const config = {
 
   systemPrompt: process.env.SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT,
 
-  // Instagram (optional) — the webhook server only starts if all three of
-  // these are set; leaving them blank just means Instagram support is off.
-  igPageAccessToken: process.env.IG_PAGE_ACCESS_TOKEN,
-  igAppSecret: process.env.IG_APP_SECRET,
-  igVerifyToken: process.env.IG_VERIFY_TOKEN,
-  igWebhookPort: int('IG_WEBHOOK_PORT', 3001),
-  igGraphApiVersion: process.env.IG_GRAPH_API_VERSION || 'v21.0',
+  // Instagram (optional) — logs in directly with a username/password
+  // (unofficial; see README for the real risks) rather than the official
+  // Graph API. Only starts if both of these are set.
+  igUsername: process.env.IG_USERNAME,
+  igPassword: process.env.IG_PASSWORD,
+  igPollIntervalMs: int('IG_POLL_INTERVAL_MS', 15000),
+  igSessionFile: process.env.IG_SESSION_FILE || './data/instagram-session.json',
+  igSeenFile: process.env.IG_SEEN_FILE || './data/instagram-seen.json',
 };
 
-config.instagramEnabled = Boolean(
-  config.igPageAccessToken && config.igAppSecret && config.igVerifyToken,
-);
+config.instagramEnabled = Boolean(config.igUsername && config.igPassword);

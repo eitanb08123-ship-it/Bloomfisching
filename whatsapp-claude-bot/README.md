@@ -2,10 +2,12 @@
 
 An auto-reply bot for WhatsApp and (optionally) Instagram DMs that uses the
 [Gemini API](https://ai.google.dev/) to generate real, context-aware replies — no keyword matching, no
-canned responses. WhatsApp connects via [`whatsapp-web.js`](https://wwebjs.dev/) (scan a QR code, no
-Meta App needed); Instagram connects via the official Instagram messaging webhook (needs a Meta App —
-see [Instagram setup](#instagram-setup-optional) below). Both share the same rolling per-contact
-conversation history, persona, pause commands, and throttling.
+canned responses. WhatsApp connects via [`whatsapp-web.js`](https://wwebjs.dev/) (scan a QR code).
+Instagram connects by logging in directly with a username and password, the same way the mobile app
+would — there's no official API path that fits a bot running on your own computer, and this unofficial
+one carries real risk to the account (see [Instagram setup](#instagram-setup-optional) below before
+using it). Both platforms share the same rolling per-contact conversation history, persona, pause
+commands, and throttling.
 
 ## Features
 
@@ -30,7 +32,7 @@ conversation history, persona, pause commands, and throttling.
 whatsapp-claude-bot/
 ├── index.js         # entry point: checks setup status, then starts bot.js and (if configured) instagram.js
 ├── bot.js           # WhatsApp client + event handling
-├── instagram.js     # Instagram webhook server + Graph API sending
+├── instagram.js     # Instagram login/session + inbox polling + sending
 ├── reply-engine.js  # shared: conversation history store, Gemini calls, throttling/retry
 ├── log.js           # shared: timestamped console logging helpers
 ├── setup-server.js  # local-only HTTP server + HTML form that writes .env
@@ -46,9 +48,9 @@ whatsapp-claude-bot/
 - A phone with WhatsApp installed (used once to scan the QR code)
 - A [Gemini API key](https://aistudio.google.com/apikey) (Google AI Studio has a free tier — no credit
   card required to get started)
-- **Instagram is optional** and needs its own separate things (a Meta Developer App, an Instagram
-  Business/Creator account, and a tunnel tool like ngrok) — see
-  [Instagram setup](#instagram-setup-optional). Skip it entirely if you only want WhatsApp.
+- **Instagram is optional** and, unlike WhatsApp, comes with a real risk of the account getting
+  flagged or restricted — read [Instagram setup](#instagram-setup-optional) in full before using it.
+  Skip it entirely if you only want WhatsApp; nothing else here depends on it.
 
 ## Setup
 
@@ -87,8 +89,9 @@ Setup required: open http://localhost:3000 in your browser to enter your Gemini 
 5. On success, the page confirms it saved, the local server shuts down, and the bot starts
    automatically in the same terminal — no need to run `npm start` again.
 
-The same form also has three optional fields for Instagram — leave them blank for now if you only want
-WhatsApp; see [Instagram setup](#instagram-setup-optional) below if/when you want to add it.
+The same form also has two optional fields for Instagram (username and password) — leave them blank for
+now if you only want WhatsApp; see [Instagram setup](#instagram-setup-optional) below, and read it in
+full, before filling them in.
 
 **How it works, and what it does/doesn't do:**
 
@@ -103,8 +106,8 @@ WhatsApp; see [Instagram setup](#instagram-setup-optional) below if/when you wan
 
 For WhatsApp, this project only needs the Gemini API key — it doesn't use the official WhatsApp Business
 API (which would need its own access token), because it logs in via a scanned WhatsApp Web QR code
-instead (see below). Instagram is different: it has no unofficial equivalent to `whatsapp-web.js`, so it
-does need its own official Meta credentials — see [Instagram setup](#instagram-setup-optional).
+instead (see below). Instagram needs its own username and password instead, for the reasons — and with
+the risks — explained in [Instagram setup](#instagram-setup-optional).
 
 **To update the key later** (e.g. you rotated it), reopen the setup UI without starting the bot:
 
@@ -133,98 +136,77 @@ code again on subsequent runs unless you log out from your phone or delete that 
 
 ## Instagram setup (optional)
 
-WhatsApp works standalone with just a Gemini key. Instagram is an **optional add-on** on top of that —
-skip this whole section if you only want WhatsApp. Unlike WhatsApp (which just needs a QR-code scan),
-Instagram only has an **official** integration path (Instagram doesn't have anything like
-`whatsapp-web.js`), which means more setup and a few extra moving parts:
+**Read this whole section before entering an Instagram username/password anywhere in this project.**
 
-- A **Meta Developer App** (free, but requires a Facebook account)
-- An **Instagram Business or Creator account**, linked to a **Facebook Page**
-- A **Page access token** and **App secret** from that Meta App
-- Since Meta needs to reach a webhook on the public internet, and this bot runs on your own computer,
-  you need a **tunnel** (e.g. [ngrok](https://ngrok.com/), free tier is enough) to give your machine a
-  temporary public HTTPS URL
+WhatsApp works standalone with just a Gemini key — Instagram is a completely optional add-on, and
+skipping it changes nothing else about how this bot runs.
 
-Expect this to take longer than the WhatsApp setup and to require some back-and-forth in Meta's own
-dashboard, which changes its UI over time — treat the steps below as a map, not a pixel-exact guide.
+Instagram (Meta) has no equivalent of `whatsapp-web.js` and no realistic official API path for a bot
+that runs on your own computer, answering DMs, without a business approval process. So this project
+connects to Instagram the unofficial way: it logs in directly with a real username and password, using
+the [`instagram-private-api`](https://github.com/dilame/instagram-private-api) library, which
+re-implements what the official Instagram mobile app does internally. This is fundamentally different
+from — and riskier than — the WhatsApp side of this project:
 
-### 1. Create a Meta App and connect Instagram
+- **It violates Instagram's Terms of Service.** Automating a personal account this way is against the
+  rules Instagram/Meta sets, independent of how well-behaved the bot is.
+- **Real risk of the account being challenged, restricted, or banned.** Instagram actively looks for
+  exactly this pattern (third-party login, automated message patterns) and can lock the account,
+  demand identity verification, or disable it outright — temporarily or permanently.
+- **The library itself is not actively maintained** (last updated in 2024) — Instagram's internal API
+  changes over time, which can make login or messaging stop working with no warning, and means this
+  integration is more likely to need future fixes than the WhatsApp or Gemini side of this project.
+- **Your real password is stored in plaintext** in your local `.env` file (never sent anywhere except to
+  Instagram's own login endpoint, and `.env` stays out of git — but it's still a real password on disk,
+  a fundamentally more sensitive secret than an API key or OAuth token).
 
-1. Go to https://developers.facebook.com/apps and create a new App (choose the "Business" type when
-   asked what kind of app you're building).
-2. In the App dashboard, add the **Instagram** product (look for "Instagram" — sometimes listed as
-   "Instagram Graph API" or under "Messenger" — in "Add Products" on the left sidebar) and follow its
-   setup flow to connect your Instagram **Business or Creator** account (a personal Instagram account
-   won't work — convert it to Business/Creator first in the Instagram app: Settings → Account type).
-3. Your Instagram account must be linked to a **Facebook Page** — the setup flow above will prompt you
-   to create or select one if it isn't already.
-4. From the App dashboard, generate a **Page access token** for that Page (with Instagram messaging
-   permissions — the exact permission names, e.g. `instagram_manage_messages` and `pages_messaging`,
-   are shown during this step). Copy it somewhere safe — you'll paste it into this bot's setup UI.
-5. Under **App Settings → Basic**, copy the **App Secret** (click "Show" — you may need to re-enter your
-   Facebook password).
+**Strong recommendation: use an Instagram account you are prepared to lose** — a secondary/test account,
+not your main one, not a business account you depend on. If you proceed with a primary account anyway,
+that's an informed choice this README can't make safer, only clearer.
 
-### 2. Run a tunnel so Meta can reach your machine
+### How it works
 
-Meta's webhook can't reach `http://localhost` on your PC directly — it needs a public HTTPS URL. Using
-[ngrok](https://ngrok.com/) (sign up free, then follow their install instructions for your OS):
+- On first login, the bot authenticates with `IG_USERNAME` / `IG_PASSWORD`, simulating the same request
+  sequence the mobile app makes. If the account has two-factor authentication enabled, the bot will
+  print a prompt in the terminal asking for the code — this requires `npm start` to be running
+  interactively (a visible terminal you can type into), not detached/backgrounded.
+- The logged-in session is cached to `data/instagram-session.json` so the bot doesn't log in fresh on
+  every restart — repeated logins are themselves a signal Instagram's abuse detection watches for.
+- Instead of a live push connection, the bot **polls** Instagram's DM inbox on an interval
+  (`IG_POLL_INTERVAL_MS`, default 15 seconds) and answers whatever's new since the last check. This
+  means replies aren't instant the way WhatsApp's are — expect up to one poll interval of extra delay.
+- If Instagram flags the login with a security checkpoint ("confirm it's you"), the bot can't complete
+  that automatically — it logs an error telling you to open Instagram (app or instagram.com) on that
+  account, complete the prompt there yourself, then restart the bot.
 
-```bash
-ngrok http 3001
-```
+### Setup
 
-(3001 is this bot's default Instagram port — matches `IG_WEBHOOK_PORT` in `.env.example`.) ngrok prints
-a public URL like `https://random-string.ngrok-free.app` — keep that terminal window open; the tunnel
-only works while it's running, and **the URL changes every time you restart ngrok** on the free tier
-(you'll need to re-register it with Meta each time, per the next step) unless you pay for a static
-domain.
+1. Decide on the account (see the recommendation above), and make sure you can complete a 2FA prompt or
+   security checkpoint on it manually if Instagram asks for one.
+2. Run `npm run setup` (or `npm start` if this is your first setup) and fill in the two optional
+   Instagram fields — username and password — alongside the Gemini key. Leave both blank to skip
+   Instagram entirely.
+3. Start the bot (`npm start`, if it isn't already running). Watch the terminal:
+   - `Instagram: logging in with username/password...` — it's attempting login.
+   - If a 2FA prompt appears, type the code you receive and press Enter.
+   - `Instagram: logged in.` followed by `Instagram: polling for new messages every 15000ms.` means it
+     worked.
+   - If you instead see a security-checkpoint error, follow its instructions (complete the checkpoint in
+     the real Instagram app/site, then restart the bot).
 
-### 3. Configure the bot with its own values
+### Test it
 
-Run `npm run setup` (or `npm start` if this is your first setup) and fill in, alongside the Gemini key:
+Send a DM to that Instagram account from a *different* Instagram account. Within one poll interval, you
+should see it logged in the bot's terminal, followed by a Gemini-generated reply appearing in the thread.
 
-- **Instagram Page access token** — from step 1.4 above
-- **Meta App secret** — from step 1.5 above
-- **Instagram webhook verify token** — this one you invent yourself, any string (e.g. mash your
-  keyboard). You'll enter this *exact same string* again in Meta's dashboard in the next step — it just
-  has to match in both places, nothing more.
+### If you want to stop
 
-All three are optional in the form — leave them blank and only WhatsApp runs. Save, then start the bot
-(`npm start` if it isn't already running) — you should see:
-
-```
-Instagram webhook server listening on http://localhost:3001/webhook
-```
-
-### 4. Register the webhook with Meta
-
-Back in the Meta App dashboard, on the Instagram/Messenger product's **Webhooks** configuration screen:
-
-1. **Callback URL**: your ngrok URL + `/webhook`, e.g. `https://random-string.ngrok-free.app/webhook`
-2. **Verify token**: the exact same string you entered as "Instagram webhook verify token" in this
-   bot's setup UI
-3. Click **Verify and Save** — Meta will send a test request to your webhook; if the bot's terminal logs
-   `Instagram webhook verified by Meta.`, it worked. If it fails, double-check the URL and that both
-   `npm start` and `ngrok` are still running.
-4. **Subscribe** the webhook to the `messages` field (there's a list of checkboxes for which events to
-   receive — you only need `messages`).
-
-### 5. Test it
-
-Send a DM to your Instagram account from a *different* Instagram account. You should see it logged in
-the bot's terminal, followed by a Gemini-generated reply appearing in the DM thread within a few seconds.
-
-**Notes:**
-
-- While your Meta App is in **Development mode**, Instagram only delivers messages from accounts added
-  as testers/roles on the App (App Dashboard → Roles) — for wider use, Meta requires App Review for the
-  messaging permissions, which is a separate approval process on Meta's side, outside this bot's control.
-- Every ngrok restart (free tier) gets a new URL — you'll need to update the Callback URL in Meta's
-  dashboard each time. A static ngrok domain (paid) or a real hosting deployment avoids this, but is
-  outside this project's "runs locally" scope.
-- Like the setup UI, the webhook server binds only to `127.0.0.1` (localhost) on `IG_WEBHOOK_PORT` — it
-  is never reachable from other devices on your network directly. `ngrok` (or whichever tunnel tool you
-  use) runs locally too and is what actually exposes it to the internet.
+Open `.env` in a text editor and delete (or blank out) the `IG_USERNAME` and `IG_PASSWORD` lines, then
+restart the bot — this stops it from logging in on future runs. (The setup UI's form can only add or
+change these values, not clear them — leaving a field blank there keeps whatever was already saved, so
+use `.env` directly for this.) Stopping the bot this way doesn't log the account out elsewhere by
+itself — to fully revoke the session, log out that login from the real Instagram app's security
+settings, or just change the account's password.
 
 ## Commands
 
@@ -260,10 +242,11 @@ See `.env.example` for the full list of tunable environment variables, including
   generic greetings.
 - `SETUP_UI_PORT` — port the local setup UI listens on (default `3000`), if that port is already taken
   on your machine.
-- `IG_WEBHOOK_PORT` — port the Instagram webhook server listens on locally (default `3001`); point your
-  tunnel (e.g. `ngrok http 3001`) at this.
-- `IG_GRAPH_API_VERSION` — Graph API version used for Instagram requests (default `v21.0`); bump this if
-  Meta requires a newer one by the time you set this up.
+- `IG_POLL_INTERVAL_MS` — how often (ms) the bot checks Instagram for new DMs (default `15000`). Lower
+  is faster but more conspicuous as automated behavior; higher is slower but safer.
+- `IG_SESSION_FILE` / `IG_SEEN_FILE` — where the cached Instagram login session and per-conversation
+  "already replied" bookkeeping are stored (default `./data/instagram-session.json` and
+  `./data/instagram-seen.json`).
 
 ## Notes and caveats
 
@@ -276,9 +259,17 @@ See `.env.example` for the full list of tunable environment variables, including
   - It uses Puppeteer/Chromium under the hood. On some Linux hosts you may need extra system libraries
   for headless Chrome; if `npm start` fails during browser launch, install your distro's Chromium
   dependencies (e.g. `apt install -y chromium` or the libraries it depends on).
-- Instagram, unlike WhatsApp here, uses Meta's **official** Messenger/Instagram messaging API — no
-  unofficial automation, no comparable ban risk from the integration method itself. The usual platform
-  rules still apply (no spam, respect people who ask to stop hearing from an automated account, etc.).
+- Instagram's integration here is **unofficial and materially riskier than WhatsApp's** — see
+  [Instagram setup](#instagram-setup-optional) in full before using it. In short: it violates
+  Instagram's Terms of Service, the login library is not actively maintained, and there is a real
+  (not theoretical) chance of the account being challenged, restricted, or banned. Use an account
+  you're prepared to lose.
+- Your Instagram password lives in `.env` in plaintext (never sent anywhere except Instagram's own
+  login endpoint, and `.env` is gitignored) — still a materially more sensitive secret than the API
+  keys elsewhere in this project. The cached login session (`data/instagram-session.json`) is
+  similarly sensitive: anyone with that file can act as the logged-in account without needing the
+  password again, so treat it accordingly (don't share it, don't commit it — it's covered by the
+  same `data/` gitignore entry as everything else here).
 - Conversation history and pause state are stored unencrypted in `data/state.json` (path configurable
   via `DATA_FILE`), shared across both platforms (Instagram contacts are stored with an `ig:` prefix so
   they can never collide with WhatsApp contact IDs). Treat it like any other file containing chat content.

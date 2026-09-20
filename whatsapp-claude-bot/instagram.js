@@ -1,102 +1,178 @@
-import http from 'node:http';
-import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import readline from 'node:readline';
+import {
+  IgApiClient,
+  IgLoginTwoFactorRequiredError,
+  IgCheckpointError,
+  IgLoginRequiredError,
+  IgUserHasLoggedOutError,
+} from 'instagram-private-api';
 import { config } from './config.js';
 import { log, logError, formatError } from './log.js';
 import { store, scheduleReply } from './reply-engine.js';
 
-const MAX_BODY_BYTES = 512 * 1024;
 const IG_ID_PREFIX = 'ig:';
 
-function graphApiUrl(pathSuffix) {
-  return `https://graph.facebook.com/${config.igGraphApiVersion}${pathSuffix}?access_token=${encodeURIComponent(config.igPageAccessToken)}`;
-}
-
-async function sendGraphApiMessage(igsid, body) {
-  const res = await fetch(graphApiUrl('/me/messages'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ recipient: { id: igsid }, ...body }),
-  });
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    throw new Error(`Instagram Graph API request failed: ${res.status} ${errText}`);
-  }
-}
+const ig = new IgApiClient();
+let ownUserId = null;
 
 // How this platform actually sends things, for the shared reply engine.
+// No typing-indicator equivalent is exposed by this library, so the
+// adapter only implements sendMessage — the reply engine treats that as
+// optional and just skips it.
 const instagramAdapter = {
   async sendMessage(contactId, text) {
-    const igsid = contactId.slice(IG_ID_PREFIX.length);
-    await sendGraphApiMessage(igsid, { message: { text } });
-  },
-  async sendTyping(contactId) {
-    const igsid = contactId.slice(IG_ID_PREFIX.length);
-    await sendGraphApiMessage(igsid, { sender_action: 'typing_on' });
+    const userId = contactId.slice(IG_ID_PREFIX.length);
+    // skipLinkCheck avoids a regex-based URL scan this library recommends
+    // installing a native `re2` dependency for; our replies are plain text.
+    await ig.entity.directThread([userId]).broadcastText(text, true);
   },
 };
 
-function verifySignature(rawBody, signatureHeader) {
-  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
-  const expected = crypto.createHmac('sha256', config.igAppSecret).update(rawBody).digest('hex');
-  const provided = signatureHeader.slice('sha256='.length);
-
-  let expectedBuf;
-  let providedBuf;
-  try {
-    expectedBuf = Buffer.from(expected, 'hex');
-    providedBuf = Buffer.from(provided, 'hex');
-  } catch {
-    return false;
-  }
-  if (expectedBuf.length !== providedBuf.length) return false;
-  return crypto.timingSafeEqual(expectedBuf, providedBuf);
-}
-
-function readRawBody(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    let size = 0;
-    req.on('data', (chunk) => {
-      size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
-        reject(new Error('Webhook body too large'));
-        req.destroy();
-        return;
-      }
-      chunks.push(chunk);
+function promptStdin(question) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
     });
-    req.on('end', () => resolve(Buffer.concat(chunks)));
-    req.on('error', reject);
   });
 }
 
-// One entry in payload.entry[].messaging[]. Delivery/read receipts,
-// postbacks, and attachment-only messages (no .message or no .text) are
-// intentionally skipped.
-function handleMessagingEvent(event) {
-  if (!event.message) return;
+async function saveSession() {
+  try {
+    fs.mkdirSync(path.dirname(config.igSessionFile), { recursive: true });
+    const serialized = await ig.state.serialize();
+    fs.writeFileSync(config.igSessionFile, JSON.stringify(serialized), { mode: 0o600 });
+  } catch (err) {
+    logError('Instagram: failed to save session:', formatError(err));
+  }
+}
 
-  if (event.message.is_echo) {
-    // A message sent via the Page — either this bot's own reply, or a human
-    // manager replying through the Instagram app. Mirrors WhatsApp's
-    // fromMe handling: only used for the owner-level global /pauseall and
-    // /resumeall commands, never triggers a Gemini reply.
-    const body = event.message.text?.trim().toLowerCase();
-    if (body === '/pauseall') {
-      store.setGlobalPaused(true);
-      log('Global auto-reply PAUSED (owner command via Instagram).');
-    } else if (body === '/resumeall') {
-      store.setGlobalPaused(false);
-      log('Global auto-reply RESUMED (owner command via Instagram).');
+async function tryRestoreSession() {
+  let saved;
+  try {
+    saved = fs.readFileSync(config.igSessionFile, 'utf8');
+  } catch {
+    return null;
+  }
+  try {
+    await ig.state.deserialize(JSON.parse(saved));
+    const me = await ig.account.currentUser();
+    return String(me.pk);
+  } catch (err) {
+    logError('Instagram: saved session is no longer valid, logging in fresh:', formatError(err));
+    return null;
+  }
+}
+
+async function freshLogin() {
+  log('Instagram: logging in with username/password...');
+  await ig.simulate.preLoginFlow();
+
+  try {
+    await ig.account.login(config.igUsername, config.igPassword);
+  } catch (err) {
+    if (err instanceof IgLoginTwoFactorRequiredError) {
+      const info = err.response.body.two_factor_info;
+      log(
+        `Instagram: two-factor authentication required (check your ${
+          info.sms_two_factor_on ? 'SMS' : 'authenticator app'
+        }).`,
+      );
+      const code = await promptStdin('Enter the Instagram 2FA code: ');
+      await ig.account.twoFactorLogin({
+        username: info.username,
+        verificationCode: code,
+        twoFactorIdentifier: info.two_factor_identifier,
+        trustThisDevice: '1',
+      });
+    } else if (err instanceof IgCheckpointError) {
+      logError(
+        'Instagram: this login was flagged for a security checkpoint. Open Instagram (the app or ' +
+          'instagram.com) on this account, complete the "confirm it\'s you" prompt there, then restart the bot.',
+      );
+      throw err;
+    } else {
+      throw err;
     }
+  }
+
+  process.nextTick(() => ig.simulate.postLoginFlow().catch(() => {}));
+  await saveSession();
+  log('Instagram: logged in.');
+
+  const me = await ig.account.currentUser();
+  return String(me.pk);
+}
+
+async function loginToInstagram() {
+  ig.state.generateDevice(config.igUsername);
+
+  const restoredUserId = await tryRestoreSession();
+  if (restoredUserId) {
+    ownUserId = restoredUserId;
+    log('Instagram: restored saved session.');
     return;
   }
 
-  const text = event.message.text;
-  const senderId = event.sender?.id;
-  if (!text || !senderId) return;
+  ownUserId = await freshLogin();
+}
 
-  const contactId = `${IG_ID_PREFIX}${senderId}`;
+// ---------- Tracking which messages we've already handled ----------
+// A flat { threadId: latestSeenTimestamp } map, persisted to disk. On the
+// bot's very first-ever run (no file yet) the first poll only records a
+// baseline for each existing thread without replying, so it doesn't
+// suddenly respond to a backlog of old messages. On every later poll —
+// including after a restart, using the persisted file — anything newer
+// than the stored timestamp is treated as new and answered normally,
+// which correctly includes messages that arrived while the bot was down.
+
+let seenTimestamps = new Map();
+let isFirstRunEver = true;
+
+function loadSeenTimestamps() {
+  try {
+    const raw = fs.readFileSync(config.igSeenFile, 'utf8');
+    const obj = JSON.parse(raw);
+    seenTimestamps = new Map(Object.entries(obj));
+    isFirstRunEver = seenTimestamps.size === 0;
+  } catch {
+    seenTimestamps = new Map();
+    isFirstRunEver = true;
+  }
+}
+
+function saveSeenTimestamps() {
+  try {
+    fs.mkdirSync(path.dirname(config.igSeenFile), { recursive: true });
+    fs.writeFileSync(config.igSeenFile, JSON.stringify(Object.fromEntries(seenTimestamps)));
+  } catch (err) {
+    logError('Instagram: failed to save seen-message state:', formatError(err));
+  }
+}
+
+function isNewerThanSeen(item, threadId) {
+  const seen = seenTimestamps.get(threadId);
+  return !seen || Number(item.timestamp) > Number(seen);
+}
+
+function handleOwnCommand(text) {
+  const lower = text.trim().toLowerCase();
+  if (lower === '/pauseall') {
+    store.setGlobalPaused(true);
+    log('Global auto-reply PAUSED (owner command via Instagram).');
+  } else if (lower === '/resumeall') {
+    store.setGlobalPaused(false);
+    log('Global auto-reply RESUMED (owner command via Instagram).');
+  }
+  // Any other text the account itself sent (this bot's own replies, or the
+  // owner just chatting manually) is not something we need to act on.
+}
+
+function handleContactMessage(userId, text) {
+  const contactId = `${IG_ID_PREFIX}${userId}`;
   const lower = text.trim().toLowerCase();
 
   if (lower === '/pause') {
@@ -118,88 +194,72 @@ function handleMessagingEvent(event) {
   scheduleReply(contactId, instagramAdapter);
 }
 
-export function startInstagramServer() {
-  const server = http.createServer(async (req, res) => {
-    try {
-      const url = new URL(req.url, `http://${req.headers.host}`);
-
-      if (req.method === 'GET' && url.pathname === '/webhook') {
-        const mode = url.searchParams.get('hub.mode');
-        const token = url.searchParams.get('hub.verify_token');
-        const challenge = url.searchParams.get('hub.challenge');
-
-        if (mode === 'subscribe' && token === config.igVerifyToken) {
-          log('Instagram webhook verified by Meta.');
-          res.writeHead(200, { 'Content-Type': 'text/plain' });
-          res.end(challenge || '');
-        } else {
-          logError('Instagram webhook verification failed (mode/token mismatch).');
-          res.writeHead(403);
-          res.end();
-        }
-        return;
-      }
-
-      if (req.method === 'POST' && url.pathname === '/webhook') {
-        const rawBody = await readRawBody(req);
-
-        if (!verifySignature(rawBody, req.headers['x-hub-signature-256'])) {
-          logError('Instagram webhook signature verification failed — ignoring request.');
-          res.writeHead(401);
-          res.end();
-          return;
-        }
-
-        // Meta expects a fast ack; do the actual work after responding.
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end('EVENT_RECEIVED');
-
-        let payload;
-        try {
-          payload = JSON.parse(rawBody.toString('utf8'));
-        } catch (err) {
-          logError('Failed to parse Instagram webhook payload:', formatError(err));
-          return;
-        }
-
-        for (const entry of payload.entry || []) {
-          for (const event of entry.messaging || []) {
-            try {
-              handleMessagingEvent(event);
-            } catch (err) {
-              logError('Error handling Instagram messaging event:', formatError(err));
-            }
-          }
-        }
-        return;
-      }
-
-      res.writeHead(404);
-      res.end();
-    } catch (err) {
-      logError('Instagram webhook request error:', formatError(err));
+async function poll() {
+  let threads;
+  try {
+    threads = await ig.feed.directInbox().items();
+  } catch (err) {
+    if (err instanceof IgLoginRequiredError || err instanceof IgUserHasLoggedOutError) {
+      logError('Instagram: session expired — logging in again...');
       try {
-        res.writeHead(500);
-        res.end();
-      } catch {
-        // response may already have been sent
+        await freshLogin();
+      } catch (loginErr) {
+        logError('Instagram: re-login failed:', formatError(loginErr));
+      }
+      return;
+    }
+    logError('Instagram: failed to poll inbox:', formatError(err));
+    return;
+  }
+
+  let changed = false;
+
+  for (const thread of threads) {
+    const textItems = (thread.items || []).filter((item) => item.item_type === 'text' && item.text);
+
+    if (isFirstRunEver) {
+      // Seed a baseline for this thread from its most recent item, without
+      // replying, so we don't respond to a backlog of pre-existing messages.
+      const newest = thread.last_permanent_item || textItems[0];
+      if (newest) {
+        seenTimestamps.set(thread.thread_id, newest.timestamp);
+        changed = true;
+      }
+      continue;
+    }
+
+    const newItems = textItems
+      .filter((item) => isNewerThanSeen(item, thread.thread_id))
+      .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+
+    if (newItems.length === 0) continue;
+
+    for (const item of newItems) {
+      try {
+        if (String(item.user_id) === ownUserId) {
+          handleOwnCommand(item.text);
+        } else {
+          handleContactMessage(item.user_id, item.text);
+        }
+      } catch (err) {
+        logError('Instagram: error handling message:', formatError(err));
       }
     }
-  });
 
-  // localhost-only: a local tunnel tool (e.g. ngrok) connects to
-  // localhost on this machine and exposes it publicly itself — this
-  // process never needs to accept connections from other devices directly.
-  server.listen(config.igWebhookPort, '127.0.0.1', () => {
-    log(`Instagram webhook server listening on http://localhost:${config.igWebhookPort}/webhook`);
-    log(
-      'Expose it publicly (e.g. with ngrok) and register the resulting HTTPS URL + /webhook in your Meta App.',
-    );
-  });
+    seenTimestamps.set(thread.thread_id, newItems[newItems.length - 1].timestamp);
+    changed = true;
+  }
 
-  server.on('error', (err) => {
-    logError('Instagram webhook server error:', formatError(err));
-  });
+  isFirstRunEver = false;
+  if (changed) saveSeenTimestamps();
+}
 
-  return server;
+export async function startInstagramService() {
+  await loginToInstagram();
+  loadSeenTimestamps();
+  log(`Instagram: polling for new messages every ${config.igPollIntervalMs}ms.`);
+  await poll();
+  setInterval(() => {
+    poll().catch((err) => logError('Instagram: unhandled polling error:', formatError(err)));
+  }, config.igPollIntervalMs);
 }
