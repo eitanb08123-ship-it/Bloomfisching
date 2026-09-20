@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "WhatsApp auto-reply bot that answers messages using the Gemini API",
+  "description": "WhatsApp + Instagram auto-reply bot that answers messages using the Gemini API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

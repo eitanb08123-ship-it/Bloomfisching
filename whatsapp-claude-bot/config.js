@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-const DEFAULT_SYSTEM_PROMPT = `You are Aria, a warm, sharp, and genuinely helpful person chatting with someone over WhatsApp.
+const DEFAULT_SYSTEM_PROMPT = `You are Aria, a warm, sharp, and genuinely helpful person chatting with someone over text/DM.
 
 How you talk:
 - Write like a real person texting a friend: casual, concise, natural. Usually 1-4 short sentences unless the question genuinely needs more.
@@ -61,4 +61,16 @@ export const config = {
     "Sorry, I'm having trouble replying right now — please try again in a moment.",
 
   systemPrompt: process.env.SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT,
+
+  // Instagram (optional) — the webhook server only starts if all three of
+  // these are set; leaving them blank just means Instagram support is off.
+  igPageAccessToken: process.env.IG_PAGE_ACCESS_TOKEN,
+  igAppSecret: process.env.IG_APP_SECRET,
+  igVerifyToken: process.env.IG_VERIFY_TOKEN,
+  igWebhookPort: int('IG_WEBHOOK_PORT', 3001),
+  igGraphApiVersion: process.env.IG_GRAPH_API_VERSION || 'v21.0',
 };
+
+config.instagramEnabled = Boolean(
+  config.igPageAccessToken && config.igAppSecret && config.igVerifyToken,
+);

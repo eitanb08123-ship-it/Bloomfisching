@@ -28,6 +28,37 @@ const FIELDS = [
       'spaces or characters (use the "Copy key" button on aistudio.google.com/apikey rather than ' +
       'selecting the text by hand).',
   },
+  {
+    key: 'IG_PAGE_ACCESS_TOKEN',
+    label: 'Instagram Page access token (optional)',
+    required: false,
+    placeholder: 'Leave blank to skip Instagram',
+    help:
+      'From your Meta App — the Page access token for the Facebook Page linked to your Instagram ' +
+      'account. Only needed if you want Instagram DMs answered too; see the README for the full setup.',
+    validate: (value) => /^[A-Za-z0-9._-]{20,}$/.test(value.trim()),
+    invalidMessage: 'That doesn\'t look like a valid access token — check you copied the whole thing.',
+  },
+  {
+    key: 'IG_APP_SECRET',
+    label: 'Meta App secret (optional)',
+    required: false,
+    placeholder: 'Leave blank to skip Instagram',
+    help: 'From your Meta App\'s Settings > Basic page — used to verify that webhook requests really come from Meta.',
+    validate: (value) => /^[A-Za-z0-9]{20,}$/.test(value.trim()),
+    invalidMessage: 'That doesn\'t look like a valid app secret — check you copied the whole thing.',
+  },
+  {
+    key: 'IG_VERIFY_TOKEN',
+    label: 'Instagram webhook verify token (optional)',
+    required: false,
+    placeholder: 'Any string you make up, e.g. a random password',
+    help:
+      'A password you invent yourself and enter in both places: here, and in the Meta App\'s webhook ' +
+      'setup screen. It just has to match in both places.',
+    validate: (value) => value.trim().length >= 6,
+    invalidMessage: 'Use at least 6 characters — this can be anything, you\'re choosing it yourself.',
+  },
 ];
 
 function readEnvFileRaw() {

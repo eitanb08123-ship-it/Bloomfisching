@@ -15,7 +15,19 @@ async function bootstrap() {
 
   // Imported dynamically so config.js (which reads .env via dotenv) only
   // loads after the setup UI above has had a chance to write it.
+  const { config } = await import('./config.js');
   const { runBot } = await import('./bot.js');
+
+  if (config.instagramEnabled) {
+    const { startInstagramServer } = await import('./instagram.js');
+    startInstagramServer();
+  } else {
+    log(
+      'Instagram not configured (IG_PAGE_ACCESS_TOKEN / IG_APP_SECRET / IG_VERIFY_TOKEN) — skipping. ' +
+        'Run "npm run setup" to add it.',
+    );
+  }
+
   await runBot();
 }
 
