@@ -93,19 +93,15 @@ jonah_cards = [
     <div class="cspecial">עכשיו מותר לקרוא אל ה׳ ולהטיל את יונה לים.</div></div>''',
 ]
 
-tokens = "".join(f'<div class="token cargo">📦<span>מטען</span></div>' for _ in range(8)) + \
-         "".join(f'<div class="token row">🚣<span>חתירה</span></div>' for _ in range(4)) + \
-         "".join(f'<div class="token pray">🙏<span>תפילה</span></div>' for _ in range(2)) + \
+tokens = "".join(f'<div class="token cargo">📦<span>מטען</span></div>' for _ in range(9)) + \
+         "".join(f'<div class="token row">🚣<span>חתירה</span></div>' for _ in range(6)) + \
+         "".join(f'<div class="token pray">🙏<span>תפילה</span></div>' for _ in range(3)) + \
          '<div class="token marker">⚠️<span>סדקים</span></div><div class="token marker">⛈️<span>סערה</span></div><div class="token marker">🧍<span>יונה</span></div>'
 
-keep_s=[0,1,3,4,5,9,10,12,13,15]
-keep_d=[0,1,3,4,7,9]
-storm=[storm[i] for i in keep_s]
-dilemmas=[dilemmas[i] for i in keep_d]
 all_cards = [storm_card(*s) for s in storm] + \
             [dilemma_card(i + 1, q) for i, q in enumerate(dilemmas)] + \
             [role_card(*r) for r in roles] + jonah_cards
-pages = [all_cards[i:i + 16] for i in range(0, len(all_cards), 16)]
+pages = [all_cards[i:i + 9] for i in range(0, len(all_cards), 9)]
 cards_html = "".join(
     f'<section class="page cards"><div class="cuthint">✂️ לגזור לאורך הקווים. כדאי להדביק על קרטון.</div><div class="grid">{"".join(p)}</div></section>'
     for p in pages[:-1])
@@ -194,24 +190,24 @@ td.an {{ font-weight: bold; white-space: nowrap; }}
 /* cards */
 .cards {{ padding: 10mm 12mm; }}
 .cuthint {{ font-size: 9pt; color: #777; margin-bottom: 2mm; }}
-.grid {{ display: grid; grid-template-columns: repeat(4, 46mm); grid-auto-rows: 64mm; gap: 0; justify-content: center; }}
-.card {{ border: 1px dashed #888; padding: 2.5mm; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.2mm; }}
-.card .ctype {{ font-size: 6.5pt; letter-spacing: .5px; color: #666; }}
-.card .ctitle {{ font-size: 11.5pt; font-weight: bold; }}
+.grid {{ display: grid; grid-template-columns: repeat(3, 60mm); grid-auto-rows: 88mm; gap: 0; justify-content: center; }}
+.card {{ border: 1px dashed #888; padding: 4mm; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2mm; }}
+.card .ctype {{ font-size: 8pt; letter-spacing: .5px; color: #666; }}
+.card .ctitle {{ font-size: 15pt; font-weight: bold; }}
 .card .ctitle.small {{ font-size: 12pt; }}
-.card .cval {{ font-size: 10.5pt; font-weight: bold; color: #c0392b; }}
-.card .cwaves {{ font-size: 12pt; }}
-.card .cverse {{ font-size: 7.5pt; font-style: italic; color: #0b3c66; }}
-.card .cspecial {{ font-size: 7.5pt; background: #fff3c4; border-radius: 2mm; padding: 2mm; margin-top: auto; }}
-.card .cq {{ font-size: 8.5pt; line-height: 1.35; flex: 1; display: flex; align-items: center; }}
-.card .cfoot {{ font-size: 6.5pt; color: #555; }}
-.card .big {{ font-size: 22pt; }}
+.card .cval {{ font-size: 13pt; font-weight: bold; color: #c0392b; }}
+.card .cwaves {{ font-size: 18pt; }}
+.card .cverse {{ font-size: 9.5pt; font-style: italic; color: #0b3c66; }}
+.card .cspecial {{ font-size: 9.5pt; background: #fff3c4; border-radius: 2mm; padding: 2mm; margin-top: auto; }}
+.card .cq {{ font-size: 10.5pt; line-height: 1.45; flex: 1; display: flex; align-items: center; }}
+.card .cfoot {{ font-size: 8pt; color: #555; }}
+.card .big {{ font-size: 36pt; }}
 .storm {{ background: linear-gradient(#ffffff 60%, #dbeaf7); }}
 .dil {{ background: linear-gradient(#ffffff 60%, #fdf0c9); }}
 .role {{ background: linear-gradient(#ffffff 60%, #dff3e3); }}
 .jonah {{ background: linear-gradient(#ffffff 60%, #ecdff5); }}
-.tokens {{ display: grid; grid-template-columns: repeat(9, 18mm); gap: 2mm; justify-content: center; margin-top: 4mm; }}
-.token {{ width: 18mm; height: 18mm; border: 1.5px dashed #555; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12pt; }}
+.tokens {{ display: grid; grid-template-columns: repeat(7, 25mm); gap: 2mm; justify-content: center; margin-top: 4mm; }}
+.token {{ width: 25mm; height: 25mm; border: 1.5px dashed #555; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 16pt; }}
 .token span {{ font-size: 8pt; }}
 .cargo {{ background: #f5e6cc; }} .row {{ background: #dbeaf7; }} .pray {{ background: #ecdff5; }} .marker {{ background: #ffd6d6; }}
 .score td, .score th {{ border: 1px solid #9bb3c9; padding: 1.2mm 2mm; font-size: 10pt; }}
@@ -222,10 +218,27 @@ td.an {{ font-weight: bold; white-space: nowrap; }}
 .box {{ break-inside: avoid; }}
 </style></head><body>
 
+<!-- ===== COVER ===== -->
+<section class="page cover">
+  <svg class="ship" viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg">
+    <path d="M30 70 q20-25 40 0 q20-25 40 0" stroke="#cfe4f5" stroke-width="4" fill="none"/>
+    <path d="M250 50 l-10 25 h12 l-12 28" stroke="#f2b705" stroke-width="5" fill="none"/>
+    <line x1="200" y1="40" x2="200" y2="170" stroke="#3b2a1a" stroke-width="6"/>
+    <path d="M200 50 L290 150 L200 150 Z" fill="#f4efe3"/>
+    <path d="M196 60 L130 150 L196 150 Z" fill="#e8dfc9"/>
+    <path d="M90 165 L310 165 L280 205 L120 205 Z" fill="#6b4423"/>
+    <path d="M0 210 q25-20 50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 V260 H0 Z" fill="#7fb6de"/>
+    <path d="M0 230 q25-20 50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 V260 H0 Z" fill="#2f6fa3"/>
+  </svg>
+  <h1>הים הולך וסוער</h1>
+  <div class="sub">ספר יונה, פרק א</div>
+  <div class="meta">משימת סיכום, ספר יונה, שכבה ט׳<br>
+  <span style="color:#fff">הוכן על ידי: איתן ______ &nbsp;·&nbsp; כיתה ט׳__</span></div>
+</section>
 
 <!-- ===== EXPLANATION PAGE (שלב 3) ===== -->
 <section class="page">
-  <h1 style="font-size:20pt">הים הולך וסוער: דף הסבר</h1>
+  <h1 style="font-size:20pt">דף הסבר</h1>
   <p><b>מגיש:</b> איתן ______ &nbsp;|&nbsp; <b>הסצנה:</b> הבריחה והסערה בים (פרק א) &nbsp;|&nbsp; <b>התוצר:</b> משחק קופסה</p>
 
   <h2>הפסוקים</h2>
